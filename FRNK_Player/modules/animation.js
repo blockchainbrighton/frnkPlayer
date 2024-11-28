@@ -13,6 +13,9 @@ import {
 import { spools, drawTapeDeck } from './drawing.js';
 import { canvas } from './dom.js'; // Ensure canvas is imported if needed
 
+// Import audio control functions
+import { playAudio, pauseAudio, setPlaybackRate } from './audio.js';
+
 let isPlaying = false;
 let animationFrameId;
 
@@ -59,26 +62,31 @@ function stopAnimation() {
 // Event listener for the Play button
 playButton.addEventListener("click", () => {
   startAnimation(PLAY_SPEED); // Reset to 1x clockwise
+  playAudio(1); // Start audio playback at normal speed
 });
 
 // Event listener for the Record button
 recordButton.addEventListener("click", () => {
   startAnimation(PLAY_SPEED); // Reset to 1x clockwise
+  playAudio(1); // Start audio playback at normal speed
 });
 
 // Event listener for the Stop button
 stopButton.addEventListener("click", () => {
   stopAnimation();
+  pauseAudio(); // Stop audio playback
 });
 
 // Event listener for the Fast Forward button
 fastForwardButton.addEventListener("click", () => {
   startAnimation(FAST_FORWARD_SPEED); // Set to 5x clockwise
+  playAudio(2); // Increase audio playback rate (maximum reliable rate is 2x)
 });
 
 // Event listener for the Rewind button
 rewindButton.addEventListener("click", () => {
   startAnimation(REWIND_SPEED); // Set to 5x anticlockwise
+  pauseAudio(); // Pause audio during rewind
 });
 
 // Event listener for window resize to adjust the canvas
