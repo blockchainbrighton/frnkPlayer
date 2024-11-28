@@ -35,12 +35,12 @@ let direction = 1; // 1 for forward, -1 for reverse
 
 // Spool properties using ratios
 const spools = {
-  left: { xRatio: 0.33, yRatio: 0.55, radiusRatio: 0.07, angle: 0 },
-  right: { xRatio: 0.67, yRatio: 0.55, radiusRatio: 0.07, angle: 0 },
+  left: { xRatio: 0.33, yRatio: 0.55, radiusRatio: 0.05, angle: 0 },
+  right: { xRatio: 0.67, yRatio: 0.55, radiusRatio: 0.05, angle: 0 },
 };
 
 // Animation variables
-const spoolSpeed = 2 * Math.PI; // Radians per second
+const spoolSpeed =  Math.PI; // Radians per second
 let animationFrameId;
 let lastTime = 0;
 
@@ -184,10 +184,10 @@ function drawSpool(spool, width, height) {
   const notchCount = 3; // Number of notches
   const notchLength = radius * 0.15; // Length of each notch
   const notchWidth = radius * 0.05; // Width of the notches
-  const outerRadius = radius - 5; // Position of the white border
+  const outerRadius = radius - 1.5; // Position of the white border
 
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1;
 
   // Draw the white border
   ctx.beginPath();
@@ -212,6 +212,8 @@ function drawSpool(spool, width, height) {
 
   ctx.restore();
 }
+
+drawSpools();
 
 // Handle playback speed changes
 function setPlaybackRate(rate) {
