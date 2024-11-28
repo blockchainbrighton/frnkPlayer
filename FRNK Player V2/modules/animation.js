@@ -6,7 +6,9 @@ const fastForwardButton = document.getElementById('fastForwardButton');
 const playbackSpeedSelector = document.getElementById('playbackSpeedSelector');
 
 // Disable buttons until audio is loaded
-[playButton, stopButton, rewindButton, fastForwardButton].forEach(btn => btn.disabled = true);
+[playButton, stopButton, rewindButton, fastForwardButton].forEach(
+  (btn) => (btn.disabled = true)
+);
 
 // Spool canvas and context
 const spoolCanvas = document.getElementById('spoolCanvas');
@@ -31,9 +33,13 @@ let startOffset = 0;
 let startTime = 0;
 let direction = 1; // 1 for forward, -1 for reverse
 
-// Spool animation variables
-let leftSpoolAngle = 0;
-let rightSpoolAngle = 0;
+// Spool properties using ratios
+const spools = {
+  left: { xRatio: 0.33, yRatio: 0.55, radiusRatio: 0.07, angle: 0 },
+  right: { xRatio: 0.67, yRatio: 0.55, radiusRatio: 0.07, angle: 0 },
+};
+
+// Animation variables
 const spoolSpeed = 2 * Math.PI; // Radians per second
 let animationFrameId;
 let lastTime = 0;
@@ -76,7 +82,7 @@ async function loadAudio() {
 
     // Enable buttons after loading
     [playButton, stopButton, rewindButton, fastForwardButton].forEach(
-      btn => (btn.disabled = false)
+      (btn) => (btn.disabled = false)
     );
 
     // Remove loading message
@@ -133,8 +139,10 @@ function animateSpools() {
   lastTime = now;
 
   const rotation = deltaTime * spoolSpeed * playbackRate * direction;
-  leftSpoolAngle += rotation;
-  rightSpoolAngle += rotation;
+
+  // Update spool angles
+  spools.left.angle += rotation;
+  spools.right.angle += rotation;
 
   drawSpools();
 
@@ -145,22 +153,63 @@ function animateSpools() {
 
 // Draw spools
 function drawSpools() {
-  ctx.clearRect(0, 0, spoolCanvas.width, spoolCanvas.height);
+  const width = spoolCanvas.width;
+  const height = spoolCanvas.height;
 
-  drawSpool(spoolCanvas.width * 0.3, spoolCanvas.height * 0.5, leftSpoolAngle);
-  drawSpool(spoolCanvas.width * 0.7, spoolCanvas.height * 0.5, rightSpoolAngle);
+  ctx.clearRect(0, 0, width, height);
+
+  // Draw each spool
+  drawSpool(spools.left, width, height);
+  drawSpool(spools.right, width, height);
 }
 
 // Draw a single spool
-function drawSpool(x, y, angle) {
+function drawSpool(spool, width, height) {
+  const { xRatio, yRatio, radiusRatio, angle } = spool;
+  const x = width * xRatio;
+  const y = height * yRatio;
+  const radius = width * radiusRatio;
+
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
+
+  // Draw main spool
   ctx.beginPath();
-  ctx.arc(0, 0, 20, 0, 2 * Math.PI);
-  ctx.strokeStyle = '#000';
+  ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  // Draw rotating white circumference with notches
+  const notchCount = 3; // Number of notches
+  const notchLength = radius * 0.15; // Length of each notch
+  const notchWidth = radius * 0.05; // Width of the notches
+  const outerRadius = radius - 5; // Position of the white border
+
+  ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
+
+  // Draw the white border
+  ctx.beginPath();
+  ctx.arc(0, 0, outerRadius, 0, Math.PI * 2);
   ctx.stroke();
+
+  // Draw the notches
+  for (let i = 0; i < notchCount; i++) {
+    const notchAngle = angle + (i * (2 * Math.PI)) / notchCount; // Rotate notches evenly
+    const notchStartX = outerRadius * Math.cos(notchAngle);
+    const notchStartY = outerRadius * Math.sin(notchAngle);
+    const notchEndX = (outerRadius - notchLength) * Math.cos(notchAngle);
+    const notchEndY = (outerRadius - notchLength) * Math.sin(notchAngle);
+
+    ctx.beginPath();
+    ctx.moveTo(notchStartX, notchStartY);
+    ctx.lineTo(notchEndX, notchEndY);
+    ctx.lineWidth = notchWidth;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  }
+
   ctx.restore();
 }
 
