@@ -239,16 +239,14 @@ async function switchPlayback(newDirection, newRate, modeButton) {
 
 // Function to update active button states
 function updateActiveButtons(activeButton) {
-  // Remove 'active' class from all transport buttons
-  [playButton, rewindButton, fastForwardButton].forEach((btn) => {
-    btn.classList.remove('active');
-  });
-
-  // Add 'active' class to the currently active button, if it's not Play
-  if (activeButton !== playButton) {
+    // Remove 'active' class from all transport buttons
+    [playButton, rewindButton, fastForwardButton].forEach((btn) => {
+      btn.classList.remove('active');
+    });
+  
+    // Add 'active' class to the currently active button
     activeButton.classList.add('active');
   }
-}
 
 // Function to start playback based on current direction and playbackRate
 async function playAudio() {
@@ -306,7 +304,7 @@ function stopAudio() {
     updateTimerDisplay();
   }
 
-  
+
 // Animate spools
 function animateSpools() {
   const now = performance.now() / 1000;
@@ -344,7 +342,7 @@ function drawSpool(spool, width, height) {
   const { xRatio, yRatio, radiusRatio, angle } = spool;
   const x = width * xRatio;
   const y = height * yRatio;
-  const radius = width * radiusRatio;
+  const radius = Math.max(1.5, width * radiusRatio); // Ensure radius is at least 1.5
 
   ctx.save();
   ctx.translate(x, y);
@@ -360,7 +358,7 @@ function drawSpool(spool, width, height) {
   const notchCount = 3; // Number of notches
   const notchLength = radius * 0.15; // Length of each notch
   const notchWidth = radius * 0.05; // Width of the notches
-  const outerRadius = radius - 1.5; // Position of the white border
+  const outerRadius = Math.max(0, radius - 1.5); // Ensure outerRadius is non-negative
 
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 1;
@@ -389,6 +387,7 @@ function drawSpool(spool, width, height) {
   ctx.restore();
 }
 
+
 drawSpools();
 
 // Function to handle playback speed changes
@@ -402,7 +401,7 @@ function setPlaybackRate(rate) {
 // Function to deactivate playback mode (called when playback ends)
 function deactivatePlaybackMode() {
   // Remove 'active' class from all transport buttons
-  [rewindButton, fastForwardButton].forEach((btn) => {
+  [rewindButton, fastForwardButton, playButton].forEach((btn) => {
     btn.classList.remove('active');
   });
 

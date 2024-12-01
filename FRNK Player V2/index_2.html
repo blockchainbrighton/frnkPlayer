@@ -33,19 +33,27 @@
       pointer-events: none;
     }
 
-    /* Add this to your existing <style> section */
-    #timerDisplay {
+   /* Container for playback speed and timer */
+    .playback-timer-container {
         position: absolute;
-        top: 5%;
+        bottom: -20; /* Align at the bottom of the main container */
         left: 50%;
         transform: translateX(-50%);
-        color: white;
-        font-size: 1.2rem;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 5px 10px;
-        border-radius: 5px;
-        pointer-events: none;
+        display: flex;
+        align-items: center;
+        gap: 10px; /* Space between the dropdown and timer */
     }
+
+    /* Adjust styles for the timer */
+    #timerDisplay {
+        position: relative; /* Adjusted to work within the flex container */
+        color: white;
+        font-size: 1 rem;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 5px;
+        white-space: nowrap; /* Prevent text wrapping */
+    }
+
     /* Button Container Styles */
     .button-container {
       position: absolute;
@@ -88,6 +96,8 @@
       background: rgba(100, 100, 100, 0.9);
     }
 
+    
+
     /* Active Button Styles */
     .button.active {
         background: rgba(255, 165, 0, 0.9); /* Example: Orange background */
@@ -114,19 +124,22 @@
         <img id="tapeDeckImage" src="./assets/tapeDeck.JPG" alt="Tape Deck">
         <canvas id="spoolCanvas"></canvas>
         <div class="button-container">
-          <button class="button" id="recordButton">Record</button>
-          <button class="button" id="playButton">Play</button>
-          <button class="button" id="rewindButton">Rewind</button>
-          <button class="button" id="fastForwardButton">Fast-F</button>
-          <button class="button" id="stopButton">Stop</button>
+            <button class="button" id="recordButton">Record</button>
+            <button class="button" id="playButton">Play</button>
+            <button class="button" id="rewindButton">Rewind</button>
+            <button class="button" id="fastForwardButton">Fast-F</button>
+            <button class="button" id="stopButton">Stop</button>
         </div>
-        <select id="playbackSpeedSelector" class="speed-selector">
-          <option value="0.8">33 RPM</option>
-          <option value="1" selected>Normal Speed</option>
-          <option value="1.2">45 RPM</option>
-        </select>
-        <div id="timerDisplay">00:00 / 00:00</div>
-      </div>
+        <div class="playback-timer-container">
+            <select id="playbackSpeedSelector" class="speed-selector">
+                <option value="0.8">33 RPM</option>
+                <option value="1" selected>Normal Speed</option>
+                <option value="1.2">45 RPM</option>
+            </select>
+            <div id="timerDisplay">00:00 / 02:36</div>
+        </div>
+    </div>
+        
   <!-- Load the animation module -->
   <script type="module" src="modules/animation_v2.js"></script>
 </body>
