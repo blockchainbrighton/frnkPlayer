@@ -4,6 +4,7 @@ const stopButton = document.getElementById('stopButton');
 const rewindButton = document.getElementById('rewindButton');
 const fastForwardButton = document.getElementById('fastForwardButton');
 const playbackSpeedSelector = document.getElementById('playbackSpeedSelector');
+const timerDisplay = document.getElementById('timerDisplay');
 
 // Disable buttons until audio is loaded
 [playButton, stopButton, rewindButton, fastForwardButton].forEach(
@@ -29,16 +30,16 @@ let reversedAudioBuffer = null;
 let sourceNode = null;
 let isPlaying = false;
 let playbackRate = 1;
-let startOffset = 0;
-let startTime = 0;
+let currentPosition = 0; // Current playback position in seconds
+let startTime = 0; // The time when playback started
 let direction = 1; // 1 for forward, -1 for reverse
 
-// *** New Sound Effect Buffers ***
+// Sound Effect Buffers
 let buttonPressBuffer = null;
 let fastWindTapeBuffer = null;
 let stopButtonPressBuffer = null;
 
-// *** References to Sound Effect Source Nodes ***
+// Sound Effect Source Nodes
 let fastWindTapeSource = null;
 
 // Spool properties using ratios
@@ -51,6 +52,9 @@ const spools = {
 const spoolSpeed = Math.PI; // Radians per second
 let animationFrameId;
 let lastTime = 0;
+
+// Timer Interval Variable
+let timerIntervalId = null;
 
 // Show loading message
 const loadingMessage = document.createElement('div');
@@ -69,7 +73,7 @@ async function loadAudio() {
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    // *** Load Main Audio ***
+    // Load Main Audio
     const response = await fetch(
       'https://ordinals.com/content/fad631362e445afc1b078cd06d1a59c11acd24ac400abff60ed05742d63bff50i0'
     );
@@ -89,17 +93,17 @@ async function loadAudio() {
         .set(audioBuffer.getChannelData(i).slice().reverse());
     }
 
-    // *** Load ButtonPress.mp3 ***
+    // Load ButtonPress.mp3
     const buttonPressResponse = await fetch('assets/buttonPress.mp3');
     const buttonPressArrayBuffer = await buttonPressResponse.arrayBuffer();
     buttonPressBuffer = await audioContext.decodeAudioData(buttonPressArrayBuffer);
 
-    // *** Load StopButtonPress.mp3 ***
+    // Load StopButtonPress.mp3
     const stopButtonPressResponse = await fetch('assets/stopButtonPress.mp3');
     const stopButtonPressArrayBuffer = await stopButtonPressResponse.arrayBuffer();
     stopButtonPressBuffer = await audioContext.decodeAudioData(stopButtonPressArrayBuffer);
 
-    // *** Load FastWindTape.mp3 ***
+    // Load FastWindTape.mp3
     const fastWindTapeResponse = await fetch('assets/fastWindTape.mp3');
     const fastWindTapeArrayBuffer = await fastWindTapeResponse.arrayBuffer();
     fastWindTapeBuffer = await audioContext.decodeAudioData(fastWindTapeArrayBuffer);
@@ -111,13 +115,58 @@ async function loadAudio() {
 
     // Remove loading message
     loadingMessage.remove();
+
+    // Update total duration in timer display
+    updateTimerDisplay();
   } catch (error) {
     console.error('Error loading audio:', error);
   }
 }
 loadAudio();
 
-// *** Function to Play ButtonPress Sound ***
+// Helper function to format time in MM:SS
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+// Function to update the timer display
+function updateTimerDisplay() {
+  const currentPos = getCurrentPosition();
+  const totalDuration = audioBuffer ? audioBuffer.duration : 0;
+  timerDisplay.textContent = `${formatTime(currentPos)} / ${formatTime(totalDuration)}`;
+}
+
+// Function to get the current playback position
+function getCurrentPosition() {
+  if (!isPlaying) {
+    return currentPosition;
+  }
+
+  const elapsed = audioContext.currentTime - startTime;
+  const deltaPosition = elapsed * playbackRate * direction;
+  let pos = currentPosition + deltaPosition;
+  pos = Math.max(0, Math.min(pos, audioBuffer.duration));
+  return pos;
+}
+
+// Function to Start the Timer Interval
+function startTimerInterval() {
+  if (!timerIntervalId) {
+    timerIntervalId = setInterval(updateTimerDisplay, 250); // Update every 250ms
+  }
+}
+
+// Function to Stop the Timer Interval
+function stopTimerInterval() {
+  if (timerIntervalId) {
+    clearInterval(timerIntervalId);
+    timerIntervalId = null;
+  }
+}
+
+// Play ButtonPress Sound
 function playButtonPress() {
   if (!buttonPressBuffer) return;
   const source = audioContext.createBufferSource();
@@ -126,7 +175,7 @@ function playButtonPress() {
   source.start(0);
 }
 
-// *** Function to Play Stop ButtonPress Sound ***
+// Play Stop ButtonPress Sound
 function stopButtonPress() {
   if (!stopButtonPressBuffer) return;
   const source = audioContext.createBufferSource();
@@ -135,17 +184,17 @@ function stopButtonPress() {
   source.start(0);
 }
 
-// *** Function to Start FastWindTape Sound ***
+// Start FastWindTape Sound
 function startFastWindTape() {
-  if (!fastWindTapeBuffer || fastWindTapeSource) return; // Prevent multiple instances
+  if (!fastWindTapeBuffer || fastWindTapeSource) return;
   fastWindTapeSource = audioContext.createBufferSource();
   fastWindTapeSource.buffer = fastWindTapeBuffer;
-  fastWindTapeSource.loop = true; // Loop the sound
+  fastWindTapeSource.loop = true;
   fastWindTapeSource.connect(audioContext.destination);
   fastWindTapeSource.start(0);
 }
 
-// *** Function to Stop FastWindTape Sound ***
+// Stop FastWindTape Sound
 function stopFastWindTape() {
   if (fastWindTapeSource) {
     fastWindTapeSource.stop();
@@ -154,7 +203,54 @@ function stopFastWindTape() {
   }
 }
 
-// Play audio function
+// Function to switch playback modes
+async function switchPlayback(newDirection, newRate, modeButton) {
+    // If the requested mode is already active, do nothing
+    if (isPlaying && direction === newDirection && playbackRate === newRate) {
+      return;
+    }
+  
+    // Play button press sound
+    playButtonPress();
+  
+    // Stop any ongoing playback
+    if (isPlaying) {
+      stopAudio();
+    }
+  
+    // Stop FastWindTape sound if any
+    stopFastWindTape();
+  
+    // Update playback parameters
+    direction = newDirection;
+    playbackRate = newRate;
+  
+    // Update active button states
+    updateActiveButtons(modeButton);
+  
+    // **Await the playAudio function**
+    await playAudio();
+  
+    // Handle FastWindTape Sound Effects
+    if (playbackRate > 1) {
+      startFastWindTape();
+    }
+  }
+
+// Function to update active button states
+function updateActiveButtons(activeButton) {
+  // Remove 'active' class from all transport buttons
+  [playButton, rewindButton, fastForwardButton].forEach((btn) => {
+    btn.classList.remove('active');
+  });
+
+  // Add 'active' class to the currently active button, if it's not Play
+  if (activeButton !== playButton) {
+    activeButton.classList.add('active');
+  }
+}
+
+// Function to start playback based on current direction and playbackRate
 async function playAudio() {
   if (isPlaying || !audioBuffer) return;
 
@@ -167,9 +263,11 @@ async function playAudio() {
   sourceNode.playbackRate.value = playbackRate;
   sourceNode.connect(audioContext.destination);
 
-  let offset = startOffset;
-  if (direction === -1) {
-    offset = audioBuffer.duration - startOffset;
+  let offset;
+  if (direction === 1) {
+    offset = currentPosition;
+  } else {
+    offset = audioBuffer.duration - currentPosition;
   }
 
   sourceNode.start(0, offset);
@@ -178,27 +276,37 @@ async function playAudio() {
   lastTime = performance.now() / 1000;
   animateSpools();
 
-  // Handle Song End to Deactivate Transport Mode
+  // Start the Timer Interval
+  startTimerInterval();
+
+  // Handle Song End
   sourceNode.onended = () => {
     stopAudio();
-    deactivateTransport();
+    deactivatePlaybackMode();
   };
 }
 
-// Stop audio function
+// Function to stop playback and update currentPosition
 function stopAudio() {
-  if (!isPlaying) return;
+    if (!isPlaying) return;
+  
+    if (sourceNode) {
+      sourceNode.onended = null; // Prevent onended from firing
+      sourceNode.stop();
+      sourceNode.disconnect();
+      sourceNode = null;
+    }
+  
+    // Update currentPosition
+    currentPosition = getCurrentPosition();
+  
+    isPlaying = false;
+    cancelAnimationFrame(animationFrameId);
+    stopTimerInterval();
+    updateTimerDisplay();
+  }
 
-  sourceNode.stop();
-  const elapsed = (audioContext.currentTime - startTime) * playbackRate;
-
-  startOffset += direction * elapsed;
-  startOffset = Math.max(0, Math.min(startOffset, audioBuffer.duration));
-
-  isPlaying = false;
-  cancelAnimationFrame(animationFrameId);
-}
-
+  
 // Animate spools
 function animateSpools() {
   const now = performance.now() / 1000;
@@ -212,6 +320,7 @@ function animateSpools() {
   spools.right.angle += rotation;
 
   drawSpools();
+  // Timer is now updated via setInterval
 
   if (isPlaying) {
     animationFrameId = requestAnimationFrame(animateSpools);
@@ -263,7 +372,7 @@ function drawSpool(spool, width, height) {
 
   // Draw the notches
   for (let i = 0; i < notchCount; i++) {
-    const notchAngle = angle + (i * (2 * Math.PI)) / notchCount; // Rotate notches evenly
+    const notchAngle = angle + (i * (2 * Math.PI)) / notchCount;
     const notchStartX = outerRadius * Math.cos(notchAngle);
     const notchStartY = outerRadius * Math.sin(notchAngle);
     const notchEndX = (outerRadius - notchLength) * Math.cos(notchAngle);
@@ -282,7 +391,7 @@ function drawSpool(spool, width, height) {
 
 drawSpools();
 
-// Handle playback speed changes
+// Function to handle playback speed changes
 function setPlaybackRate(rate) {
   playbackRate = rate;
   if (isPlaying && sourceNode) {
@@ -290,110 +399,27 @@ function setPlaybackRate(rate) {
   }
 }
 
-// Ramp playback rate
-function rampPlaybackRate(targetRate, duration) {
-  if (sourceNode) {
-    const now = audioContext.currentTime;
-    sourceNode.playbackRate.cancelScheduledValues(now);
-    sourceNode.playbackRate.setValueAtTime(sourceNode.playbackRate.value, now);
-    sourceNode.playbackRate.linearRampToValueAtTime(targetRate, now + duration);
-  }
-}
+// Function to deactivate playback mode (called when playback ends)
+function deactivatePlaybackMode() {
+  // Remove 'active' class from all transport buttons
+  [rewindButton, fastForwardButton].forEach((btn) => {
+    btn.classList.remove('active');
+  });
 
-// Unified Event Handler for Transport Buttons with Toggle Functionality
-let transportMode = null; // null, 'fastForward', or 'rewind'
-
-// Function to Activate Transport Mode
-function activateTransport(mode) {
-  if (transportMode === mode) {
-    // If the same transport mode is already active, deactivate it
-    deactivateTransport();
-    return;
-  }
-
-  // Deactivate any existing transport mode
-  deactivateTransport();
-
-  // Set the new transport mode
-  transportMode = mode;
-
-  // Set direction based on mode
-  direction = mode === 'fastForward' ? 1 : -1;
-
-  // Set playback rate to a higher value for fast transport
-  setPlaybackRate(5); // Adjust the rate as needed
-
-  // Play audio in the specified direction
-  playAudio();
-
-  // Ramp playback rate smoothly
-  rampPlaybackRate(5, 1);
-
-  // Start FastWindTape Sound
-  startFastWindTape();
-
-  // Add an active CSS class to indicate active transport mode
-  if (mode === 'fastForward') {
-    fastForwardButton.classList.add('active');
-  } else if (mode === 'rewind') {
-    rewindButton.classList.add('active');
-  }
-}
-
-// Function to Deactivate Transport Mode
-function deactivateTransport() {
-  if (!transportMode) return;
-
-  // Stop current playback and update startOffset
-  stopAudio();
-
-  // Reset direction to forward
-  direction = 1;
-
-  // Set playback rate back to normal
-  setPlaybackRate(parseFloat(playbackSpeedSelector.value));
-
-  // Stop FastWindTape sound
+  // Stop FastWindTape sound if playing
   stopFastWindTape();
-
-  // Reset transport mode
-  transportMode = null;
-
-  // Remove active CSS class
-  fastForwardButton.classList.remove('active');
-  rewindButton.classList.remove('active');
 }
 
 // Play Button Event Handler
-playButton.addEventListener('click', () => {
-  // Play ButtonPress Sound
-  playButtonPress();
-
-  // Deactivate any transport mode
-  deactivateTransport();
-
-  // If already playing, stop and reset
-  if (isPlaying) {
-    stopAudio();
-  }
-
-  // Set direction to forward
-  direction = 1;
-
-  // Set playback rate to selected value
-  setPlaybackRate(parseFloat(playbackSpeedSelector.value));
-
-  // Start playing from the updated startOffset
-  playAudio();
+playButton.addEventListener('click', async () => {
+  // Switch to Play mode (direction=1, rate=1)
+  await switchPlayback(1, parseFloat(playbackSpeedSelector.value), playButton);
 });
 
 // Stop Button Event Handler
 stopButton.addEventListener('click', () => {
-  // Play stopButtonPress Sound
+  // Play stop button sound
   stopButtonPress();
-
-  // Deactivate any transport mode
-  deactivateTransport();
 
   // Stop any current playback
   if (isPlaying) {
@@ -401,26 +427,44 @@ stopButton.addEventListener('click', () => {
   }
 
   // Reset playback position
-  startOffset = 0;
+  currentPosition = 0;
+  updateTimerDisplay();
+
+  // Remove 'active' class from all transport buttons
+  [rewindButton, fastForwardButton, playButton].forEach((btn) => {
+    btn.classList.remove('active');
+  });
+
+  // Stop FastWindTape sound
+  stopFastWindTape();
 });
 
 // Rewind Button Event Handler
-rewindButton.addEventListener('click', () => {
-  // Play ButtonPress Sound for Rewind
-  playButtonPress();
-
-  activateTransport('rewind');
+rewindButton.addEventListener('click', async () => {
+  // Switch to Rewind mode (direction=-1, rate=5)
+  await switchPlayback(-1, 5, rewindButton);
 });
 
 // FastForward Button Event Handler
-fastForwardButton.addEventListener('click', () => {
-  // Play ButtonPress Sound for Fast Forward
-  playButtonPress();
-
-  activateTransport('fastForward');
+fastForwardButton.addEventListener('click', async () => {
+  // Switch to Fast Forward mode (direction=1, rate=5)
+  await switchPlayback(1, 5, fastForwardButton);
 });
 
 // Handle Playback Speed Selector Changes
-playbackSpeedSelector.addEventListener('change', () =>
-  setPlaybackRate(parseFloat(playbackSpeedSelector.value))
-);
+playbackSpeedSelector.addEventListener('change', () => {
+  const selectedRate = parseFloat(playbackSpeedSelector.value);
+  setPlaybackRate(selectedRate);
+
+  // If in Play mode, update playback rate immediately
+  if (isPlaying && direction === 1 && playbackRate === selectedRate) {
+    // Nothing additional needed
+  }
+
+  // If in Fast Forward or Rewind, keep the rate as per transport mode
+});
+
+// Ensure Timer Interval is Stopped on Page Unload
+window.addEventListener('beforeunload', () => {
+  stopTimerInterval();
+});
