@@ -441,13 +441,13 @@ stopButton.addEventListener('click', () => {
 // Rewind Button Event Handler
 rewindButton.addEventListener('click', async () => {
   // Switch to Rewind mode (direction=-1, rate=5)
-  await switchPlayback(-1, 5, rewindButton);
+  await switchPlayback(-1, 10, rewindButton);
 });
 
 // FastForward Button Event Handler
 fastForwardButton.addEventListener('click', async () => {
   // Switch to Fast Forward mode (direction=1, rate=5)
-  await switchPlayback(1, 5, fastForwardButton);
+  await switchPlayback(1, 10, fastForwardButton);
 });
 
 // Handle Playback Speed Selector Changes
