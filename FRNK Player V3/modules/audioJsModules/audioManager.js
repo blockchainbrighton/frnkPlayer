@@ -28,21 +28,22 @@ export class AudioManager {
 
     // Initialize SoundEffects AFTER audioContext is initialized
     this.soundEffects = new SoundEffects(this.audioContext);
-}
+  }
 
- /**
+  /**
    * Initializes the Audio Context.
    */
- initAudioContext() {
+  initAudioContext() {
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.audioContext = new AudioCtx();
+
       // Handle context state changes
       this.audioContext.onstatechange = () => {
-        if (this.audioContext.state === 'suspended') {
-          this.isSuspended = true;
+        this.isSuspended = this.audioContext.state === 'suspended';
+        if (this.isSuspended) {
           console.warn('AudioContext is suspended.');
         } else if (this.audioContext.state === 'running') {
-          this.isSuspended = false;
           console.info('AudioContext is running.');
         }
       };
@@ -54,68 +55,6 @@ export class AudioManager {
    * @returns {Promise<void>}
    */
   async initialize() {
-    await this.loadAllAudio();
-  }
-
-
-   /**
-   * Internal method to start the main audio playback.
-   * @private
-   */
-   _startMainAudio() {
-    this.sourceNode = this.audioContext.createBufferSource();
-    this.sourceNode.buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
-    this.sourceNode.playbackRate.value = this.playbackRate;
-
-    // Set the current source node in soundEffects
-    this.soundEffects.setCurrentSourceNode(this.sourceNode);
-
-    // Apply effects to the source node
-    this.soundEffects.applyEffects(this.sourceNode);
-
-    const offset = this.direction === 1
-      ? this.currentPosition
-      : this.audioBuffers.main.duration - this.currentPosition;
-    this.sourceNode.start(0, offset);
-    this.startTime = this.audioContext.currentTime;
-    this.isPlaying = true;
-
-    // Handle Song End
-    this.sourceNode.onended = () => {
-      this.stopAudio();
-      // Dispatch a custom event to notify that playback has ended
-      window.dispatchEvent(new Event('playbackEnded'));
-    };
-  }
-
-  /**
-   * Toggles a sound effect on or off.
-   * @param {string} effectName - The name of the effect to toggle.
-   */
-  toggleEffect(effectName) {
-    this.soundEffects.toggleEffect(effectName);
-
-    // Re-apply effects if playback is ongoing
-    if (this.isPlaying && this.sourceNode) {
-      this.soundEffects.applyEffects(this.sourceNode);
-    }
-  }
-
-
-
-  /**
-   * Resets the playback position to the beginning.
-   */
-  resetAudio() {
-    this.stopAudio(); // Stop if playing
-    this.currentPosition = 0; // Reset position
-  }
-
-  /**
-   * Loads all required audio buffers.
-   * @returns {Promise<void>}
-   */
-  async loadAllAudio() {
     try {
       const audioPaths = {
         main: 'https://ordinals.com/content/fad631362e445afc1b078cd06d1a59c11acd24ac400abff60ed05742d63bff50i0', // Replace with a valid URL or local path
@@ -149,9 +88,7 @@ export class AudioManager {
    * @param {boolean} [options.loop=false] - Whether to loop the audio.
    * @returns {AudioBufferSourceNode|null} - The source node if playback starts, else null.
    */
-  playSound(buffer, options = {}) {
-    const { offset = 0, playbackRate = 1, loop = false } = options;
-
+  playSound(buffer, { offset = 0, playbackRate = 1, loop = false } = {}) {
     if (!buffer) {
       console.warn('Attempted to play a null or undefined buffer.');
       return null;
@@ -164,7 +101,6 @@ export class AudioManager {
     source.connect(this.audioContext.destination);
     source.start(0, offset);
 
-    // Optional: Handle end of playback if not looping
     if (!loop) {
       source.onended = () => {
         source.disconnect();
@@ -181,11 +117,11 @@ export class AudioManager {
     if (this.isPlaying || !this.audioBuffers.main) return;
 
     if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume().then(() => {
-        this._startMainAudio();
-      }).catch((error) => {
-        console.error('Error resuming AudioContext:', error);
-      });
+      this.audioContext.resume()
+        .then(() => this._startMainAudio())
+        .catch((error) => {
+          console.error('Error resuming AudioContext:', error);
+        });
     } else {
       this._startMainAudio();
     }
@@ -196,22 +132,20 @@ export class AudioManager {
    * @private
    */
   _startMainAudio() {
+    const buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
     this.sourceNode = this.audioContext.createBufferSource();
-    this.sourceNode.buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
+    this.sourceNode.buffer = buffer;
     this.sourceNode.playbackRate.value = this.playbackRate;
 
-    let lastNode = this.sourceNode;
+    // Apply effects to the source node
+    this.soundEffects.applyEffects(this.sourceNode);
 
-    // Apply gramophone effect if enabled
-    if (this.soundEffects.effectsEnabled.gramophone) {
-      lastNode.connect(this.soundEffects.effectNodes.gramophone);
-      lastNode = this.soundEffects.effectNodes.lowShelfFilter;
-    }
+    // Connect to the appropriate destination
+    this.sourceNode.connect(this.soundEffects.inputNode || this.audioContext.destination);
 
-    // Connect to destination
-    lastNode.connect(this.audioContext.destination);
-
-    const offset = this.direction === 1 ? this.currentPosition : this.audioBuffers.main.duration - this.currentPosition;
+    const offset = this.direction === 1
+      ? this.currentPosition
+      : this.audioBuffers.main.duration - this.currentPosition;
     this.sourceNode.start(0, offset);
     this.startTime = this.audioContext.currentTime;
     this.isPlaying = true;
@@ -227,6 +161,27 @@ export class AudioManager {
       // Dispatch a custom event to notify that playback has ended
       window.dispatchEvent(new Event('playbackEnded'));
     };
+  }
+
+  /**
+   * Toggles a sound effect on or off.
+   * @param {string} effectName - The name of the effect to toggle.
+   */
+  toggleEffect(effectName) {
+    this.soundEffects.toggleEffect(effectName);
+
+    // Re-apply effects if playback is ongoing
+    if (this.isPlaying && this.sourceNode) {
+      this.soundEffects.applyEffects(this.sourceNode);
+    }
+  }
+
+  /**
+   * Resets the playback position to the beginning.
+   */
+  resetAudio() {
+    this.stopAudio(); // Stop if playing
+    this.currentPosition = 0; // Reset position
   }
 
   /**
@@ -374,12 +329,14 @@ export class AudioManager {
 
     this.stopAudio();
     if (this.audioContext.state === 'running') {
-      this.audioContext.suspend().then(() => {
-        this.isSuspended = true;
-        console.info('AudioContext suspended.');
-      }).catch((error) => {
-        console.error('Error suspending AudioContext:', error);
-      });
+      this.audioContext.suspend()
+        .then(() => {
+          this.isSuspended = true;
+          console.info('AudioContext suspended.');
+        })
+        .catch((error) => {
+          console.error('Error suspending AudioContext:', error);
+        });
     }
   }
 
@@ -389,15 +346,17 @@ export class AudioManager {
   resumeAudio() {
     if (!this.isSuspended) return;
 
-    this.audioContext.resume().then(() => {
-      this.isSuspended = false;
-      console.info('AudioContext resumed.');
-      if (this.isPlaying) {
-        this.playAudio();
-      }
-    }).catch((error) => {
-      console.error('Error resuming AudioContext:', error);
-    });
+    this.audioContext.resume()
+      .then(() => {
+        this.isSuspended = false;
+        console.info('AudioContext resumed.');
+        if (this.isPlaying) {
+          this.playAudio();
+        }
+      })
+      .catch((error) => {
+        console.error('Error resuming AudioContext:', error);
+      });
   }
 
   /**
@@ -407,11 +366,13 @@ export class AudioManager {
     this.stopAudio();
     this.stopFastWindTape();
     if (this.audioContext) {
-      this.audioContext.close().then(() => {
-        console.info('AudioContext closed.');
-      }).catch((error) => {
-        console.error('Error closing AudioContext:', error);
-      });
+      this.audioContext.close()
+        .then(() => {
+          console.info('AudioContext closed.');
+        })
+        .catch((error) => {
+          console.error('Error closing AudioContext:', error);
+        });
       this.audioContext = null;
     }
     this.audioBuffers = {};
