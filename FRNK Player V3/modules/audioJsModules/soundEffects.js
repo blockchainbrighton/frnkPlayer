@@ -159,7 +159,10 @@ export class SoundEffects {
         console.log('Crackle Effect stopped.');
       }
 
-        createGramophoneEffect() {
+       /**
+         * Creates the gramophone effect nodes.
+         */
+       createGramophoneEffect() {
             const { audioContext } = this;
 
             // Create a peaking filter to boost mid frequencies
