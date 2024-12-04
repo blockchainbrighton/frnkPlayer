@@ -20,18 +20,27 @@ class UIManager {
       spoolCanvas: document.getElementById('spoolCanvas'),
     };
 
-    // Timer Interval
+    // Timer Interval ID
     this.timerIntervalId = null;
 
-    // Loading message
+    // Loading message element
     this.loadingMessage = this.createLoadingMessage();
 
-    // Bind methods
+    // Click timeout for stop button (to differentiate single and double clicks)
+    this.stopClickTimeout = null;
+
+    // Bind methods to maintain 'this' context
     this.handlePlaybackEnded = this.handlePlaybackEnded.bind(this);
     this.handlePlaybackStopped = this.handlePlaybackStopped.bind(this);
+    this.handleStopButtonClick = this.handleStopButtonClick.bind(this);
+    this.handleStopSingleClick = this.handleStopSingleClick.bind(this);
+    this.handleStopDoubleClick = this.handleStopDoubleClick.bind(this);
   }
 
-  // Create and display loading message
+  /**
+   * Create and display a loading message on the screen.
+   * @returns {HTMLElement} The loading message element.
+   */
   createLoadingMessage() {
     const loadingMessage = document.createElement('div');
     loadingMessage.textContent = 'Loading...';
@@ -42,34 +51,40 @@ class UIManager {
       left: '50%',
       transform: 'translate(-50%, -50%)',
       zIndex: '1000',
+      fontSize: '1.5em',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      padding: '20px',
+      borderRadius: '8px',
     });
     document.body.appendChild(loadingMessage);
     return loadingMessage;
   }
 
-  // Initialize UI
+  /**
+   * Initialize the UI by loading audio, setting up animations, and attaching event listeners.
+   */
   async init() {
     try {
-      // Disable buttons initially
+      // Disable transport buttons initially
       this.disableTransportButtons();
 
-      // Initialize Animation
+      // Initialize Animation Manager
       this.animationManager.initResizeListener();
       this.animationManager.resizeCanvas();
 
-      // Load all audio
+      // Load all audio resources
       await this.audioManager.loadAllAudio();
 
-      // Enable buttons after loading
+      // Enable transport buttons after audio is loaded
       this.enableTransportButtons();
 
       // Remove loading message
       this.loadingMessage.remove();
 
-      // Update timer display
+      // Update timer display initially
       this.updateTimerDisplay();
 
-      // Attach Event Listeners
+      // Attach event listeners to UI elements
       this.attachEventListeners();
 
       // Listen to custom audio events
@@ -78,10 +93,13 @@ class UIManager {
     } catch (error) {
       console.error('Initialization failed:', error);
       this.loadingMessage.textContent = 'Failed to load audio.';
+      // Optionally, display an error message to the user
     }
   }
 
-  // Disable transport buttons
+  /**
+   * Disable transport control buttons.
+   */
   disableTransportButtons() {
     const transportButtons = [
       this.elements.playButton,
@@ -89,10 +107,17 @@ class UIManager {
       this.elements.rewindButton,
       this.elements.fastForwardButton,
     ];
-    transportButtons.forEach((btn) => btn && (btn.disabled = true));
+    transportButtons.forEach((btn) => {
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+      }
+    });
   }
 
-  // Enable transport buttons
+  /**
+   * Enable transport control buttons.
+   */
   enableTransportButtons() {
     const transportButtons = [
       this.elements.playButton,
@@ -100,44 +125,46 @@ class UIManager {
       this.elements.rewindButton,
       this.elements.fastForwardButton,
     ];
-    transportButtons.forEach((btn) => btn && (btn.disabled = false));
+    transportButtons.forEach((btn) => {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+      }
+    });
   }
 
-  // Attach event listeners to buttons and selectors
+  /**
+   * Attach event listeners to UI elements.
+   */
   attachEventListeners() {
+    // Play Button Click
     this.elements.playButton.addEventListener('click', () => {
       const rate = parseFloat(this.elements.playbackSpeedSelector.value) || 1;
       this.switchPlayback(1, rate, this.elements.playButton);
     });
 
-    this.elements.stopButton.addEventListener('click', () => {
-      this.audioManager.playStopButtonPress();
-      if (this.audioManager.isPlaying) {
-        this.audioManager.stopAudio();
-      }
-      this.audioManager.currentPosition = 0;
-      this.updateTimerDisplay();
-      this.deactivatePlaybackMode();
-      this.audioManager.stopFastWindTape();
-    });
+    // Stop Button Click (handles single and double clicks)
+    this.elements.stopButton.addEventListener('click', this.handleStopButtonClick);
 
+    // Rewind Button Click
     this.elements.rewindButton.addEventListener('click', () => {
       this.switchPlayback(-1, 10, this.elements.rewindButton);
     });
 
+    // Fast Forward Button Click
     this.elements.fastForwardButton.addEventListener('click', () => {
       this.switchPlayback(1, 10, this.elements.fastForwardButton);
     });
 
+    // Playback Speed Selector Change
     this.elements.playbackSpeedSelector.addEventListener('change', () => {
       const selectedRate = parseFloat(this.elements.playbackSpeedSelector.value) || 1;
       this.audioManager.setPlaybackRate(selectedRate);
 
-      if (this.audioManager.isPlaying && this.audioManager.direction === 1) {
-        // Playback rate already updated in audio manager
+      // If playback is ongoing, update animation speed
+      if (this.audioManager.isPlaying) {
+        this.animationManager.updateAnimationSpeed(this.audioManager.playbackRate, this.audioManager.direction);
       }
-
-      // If in Fast Forward or Rewind, playback rate is handled by transport mode
     });
 
     // Ensure timer interval is stopped on page unload
@@ -146,7 +173,62 @@ class UIManager {
     });
   }
 
-  // Switch playback mode
+  /**
+   * Handle stop button clicks, differentiating between single and double clicks.
+   */
+  handleStopButtonClick() {
+    const DOUBLE_CLICK_DELAY = 250; // milliseconds
+
+    if (this.stopClickTimeout) {
+      // Double Click Detected
+      clearTimeout(this.stopClickTimeout);
+      this.stopClickTimeout = null;
+      this.handleStopDoubleClick();
+    } else {
+      // Single Click Detected (tentatively)
+      this.stopClickTimeout = setTimeout(() => {
+        this.handleStopSingleClick();
+        this.stopClickTimeout = null;
+      }, DOUBLE_CLICK_DELAY);
+    }
+  }
+
+  /**
+   * Handle single click on the stop button: stop playback without resetting.
+   */
+  handleStopSingleClick() {
+    // Play stop button press sound
+    this.audioManager.playStopButtonPress();
+
+    if (this.audioManager.isPlaying) {
+      this.audioManager.stopAudio();
+      // Do not reset currentPosition
+      this.updateTimerDisplay();
+      this.deactivatePlaybackMode();
+      this.audioManager.stopFastWindTape();
+    }
+  }
+
+  /**
+   * Handle double click on the stop button: stop playback and reset to beginning.
+   */
+  handleStopDoubleClick() {
+    // Play stop button press sound (you can choose to play a different sound if desired)
+    this.audioManager.playStopButtonPress();
+
+    // Reset audio playback
+    this.audioManager.resetAudio();
+    this.updateTimerDisplay();
+    this.deactivatePlaybackMode();
+    this.audioManager.stopFastWindTape();
+  }
+
+  /**
+   * Switch playback mode based on direction and rate.
+   * @param {number} newDirection - 1 for forward, -1 for reverse.
+   * @param {number} newRate - Playback rate.
+   * @param {HTMLElement} activeButton - The button element that was activated.
+   */
   switchPlayback(newDirection, newRate, activeButton) {
     // Play button press sound
     this.audioManager.playButtonPress();
@@ -167,7 +249,10 @@ class UIManager {
     }
   }
 
-  // Set active button
+  /**
+   * Set the active button's visual state.
+   * @param {HTMLElement} activeBtn - The button to activate.
+   */
   setActiveButton(activeBtn) {
     const transportButtons = [
       this.elements.playButton,
@@ -175,11 +260,15 @@ class UIManager {
       this.elements.fastForwardButton,
     ];
     transportButtons.forEach((btn) => {
-      btn.classList.toggle('active', btn === activeBtn);
+      if (btn) {
+        btn.classList.toggle('active', btn === activeBtn);
+      }
     });
   }
 
-  // Deactivate playback mode
+  /**
+   * Deactivate all playback modes and reset UI elements.
+   */
   deactivatePlaybackMode() {
     const transportButtons = [
       this.elements.playButton,
@@ -187,7 +276,9 @@ class UIManager {
       this.elements.fastForwardButton,
     ];
     transportButtons.forEach((btn) => {
-      btn.classList.remove('active');
+      if (btn) {
+        btn.classList.remove('active');
+      }
     });
     this.audioManager.stopFastWindTape();
     this.animationManager.stopAnimation();
@@ -195,14 +286,20 @@ class UIManager {
     this.updateTimerDisplay();
   }
 
-  // Format time in MM:SS
+  /**
+   * Format time in MM:SS format.
+   * @param {number} seconds - Time in seconds.
+   * @returns {string} Formatted time string.
+   */
   formatTime(seconds) {
     const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
     const secs = String(Math.floor(seconds % 60)).padStart(2, '0');
     return `${mins}:${secs}`;
   }
 
-  // Update the timer display
+  /**
+   * Update the timer display based on current playback position.
+   */
   updateTimerDisplay() {
     const totalDuration = this.audioManager.audioBuffers.main
       ? this.audioManager.audioBuffers.main.duration
@@ -224,14 +321,18 @@ class UIManager {
     )} / ${this.formatTime(totalDuration)}`;
   }
 
-  // Start the timer interval
+  /**
+   * Start the timer interval to update the timer display.
+   */
   startTimerInterval() {
     if (!this.timerIntervalId) {
       this.timerIntervalId = setInterval(() => this.updateTimerDisplay(), 250);
     }
   }
 
-  // Stop the timer interval
+  /**
+   * Stop the timer interval.
+   */
   stopTimerInterval() {
     if (this.timerIntervalId) {
       clearInterval(this.timerIntervalId);
@@ -239,12 +340,16 @@ class UIManager {
     }
   }
 
-  // Handle playback ended event
+  /**
+   * Handle the 'playbackEnded' custom event.
+   */
   handlePlaybackEnded() {
     this.deactivatePlaybackMode();
   }
 
-  // Handle playback stopped event
+  /**
+   * Handle the 'playbackStopped' custom event.
+   */
   handlePlaybackStopped() {
     this.deactivatePlaybackMode();
   }

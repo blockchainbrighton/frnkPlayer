@@ -25,6 +25,12 @@ export class AudioManager {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
   
+    // Reset playback position to the beginning
+    resetAudio() {
+      this.stopAudio(); // Stop if playing
+      this.currentPosition = 0; // Reset position
+    }
+    
     // Helper function to load and decode audio buffers
     async loadAudioBuffer(url) {
       const response = await fetch(url);
