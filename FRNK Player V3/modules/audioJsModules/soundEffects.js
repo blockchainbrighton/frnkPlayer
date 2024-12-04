@@ -73,35 +73,89 @@ export class SoundEffects {
       this.effectNodes.crackle = this.crackleGain;
     }
   
-    /**
+   /**
      * Starts the vinyl crackle effect.
      */
     startCrackle() {
-      if (this.crackleStarted) return;
-  
-      // Start the crackle source
-      this.crackleSource.start(0);
-      this.crackleStarted = true;
-  
-      // Connect the crackle effect to the destination
-      this.effectNodes.crackle.connect(this.audioContext.destination);
+        if (this.crackleStarted) return;
+    
+        // Log effect application
+        console.log('Applying Crackle Effect with settings:', {
+        gain: this.crackleGain.gain.value,
+        bandpassFrequency: this.effectNodes.crackle.context.createBiquadFilter().frequency.value,
+        });
+    
+        // Start the crackle source
+        this.crackleSource.start(0);
+        this.crackleStarted = true;
+    
+        // Connect the crackle effect to the destination
+        this.effectNodes.crackle.connect(this.audioContext.destination);
     }
-  
+    
     /**
      * Stops the vinyl crackle effect.
      */
     stopCrackle() {
-      if (!this.crackleStarted) return;
-  
-      // Disconnect the crackle effect
-      this.effectNodes.crackle.disconnect();
-      this.crackleStarted = false;
-  
-      // Stop the crackle source
-      this.crackleSource.stop();
-      // Recreate the crackle source for future use
-      this.createCrackleEffect();
+        if (!this.crackleStarted) return;
+    
+        // Log effect removal
+        console.log('Crackle Effect stopped.');
+    
+        // Disconnect the crackle effect
+        this.effectNodes.crackle.disconnect();
+        this.crackleStarted = false;
+    
+        // Stop the crackle source
+        this.crackleSource.stop();
+        // Recreate the crackle source for future use
+        this.createCrackleEffect();
     }
+    
+    /**
+     * Applies the gramophone effect to the audio playback chain.
+     * @param {AudioNode} sourceNode - The source node to apply effects to.
+     */
+    applyEffects(sourceNode) {
+        if (!sourceNode) return;
+    
+        // Disconnect source node from destination
+        sourceNode.disconnect();
+    
+        let lastNode = sourceNode;
+    
+        // Apply gramophone effect if enabled
+        if (this.effectsEnabled.gramophone) {
+        console.log('Applying Gramophone Effect with settings:', {
+            frequency: this.effectNodes.gramophone.frequency.value,
+            gain: this.effectNodes.gramophone.gain.value,
+            Q: this.effectNodes.gramophone.Q.value,
+        });
+        lastNode.connect(this.effectNodes.gramophone);
+        lastNode = this.effectNodes.lowShelfFilter;
+        }
+    
+        // Connect to destination
+        lastNode.connect(this.audioContext.destination);
+    }
+    
+    /**
+     * Toggles a sound effect on or off.
+     * @param {string} effectName - 'crackle' or 'gramophone'
+     */
+    toggleEffect(effectName) {
+        this.effectsEnabled[effectName] = !this.effectsEnabled[effectName];
+        console.log(`Toggling ${effectName} Effect. New State: ${this.effectsEnabled[effectName]}`);
+    
+        if (effectName === 'crackle') {
+        if (this.effectsEnabled.crackle) {
+            this.startCrackle();
+        } else {
+            this.stopCrackle();
+        }
+        }
+    }
+  
   
     /**
      * Creates the gramophone effect nodes.
@@ -124,43 +178,7 @@ export class SoundEffects {
       this.effectNodes.gramophone.connect(this.effectNodes.lowShelfFilter);
     }
   
-    /**
-     * Applies the gramophone effect to the audio playback chain.
-     * @param {AudioNode} sourceNode - The source node to apply effects to.
-     */
-    applyEffects(sourceNode) {
-      if (!sourceNode) return;
-  
-      // Disconnect source node from destination
-      sourceNode.disconnect();
-  
-      let lastNode = sourceNode;
-  
-      // Apply gramophone effect if enabled
-      if (this.effectsEnabled.gramophone) {
-        lastNode.connect(this.effectNodes.gramophone);
-        lastNode = this.effectNodes.lowShelfFilter;
-      }
-  
-      // Connect to destination
-      lastNode.connect(this.audioContext.destination);
-    }
-  
-    /**
-     * Toggles a sound effect on or off.
-     * @param {string} effectName - 'crackle' or 'gramophone'
-     */
-    toggleEffect(effectName) {
-      this.effectsEnabled[effectName] = !this.effectsEnabled[effectName];
-  
-      if (effectName === 'crackle') {
-        if (this.effectsEnabled.crackle) {
-          this.startCrackle();
-        } else {
-          this.stopCrackle();
-        }
-      }
-    }
+   
   
     /**
      * Connects the crackle effect to the destination if enabled.
