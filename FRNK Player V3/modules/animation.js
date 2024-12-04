@@ -6,28 +6,34 @@ export class AnimationManager {
     this.canvas = canvasElement;
     this.ctx = this.canvas.getContext('2d');
 
-    // Spool properties
-    this.spools = {
-      left: { xRatio: 0.33, yRatio: 0.55, radiusRatio: 0.05, angle: 0 },
-      right: { xRatio: 0.67, yRatio: 0.55, radiusRatio: 0.05, angle: 0 },
-    };
+  // Spool properties with scale control
+  const spoolScale = 0.4; // Adjust this to scale the spools (1 = original size)
+
+this.spools = {
+  left: { xRatio: 0.33, yRatio: 0.55, radiusRatio: 0.125 * spoolScale, angle: 0 },
+  right: { xRatio: 0.67, yRatio: 0.55, radiusRatio: 0.125 * spoolScale, angle: 0 },
+};
+
 
     // Animation variables
-    this.spoolSpeed = Math.PI; // Radians per second
+    this.spoolSpeed = Math.PI/3; // Radians per second
     this.animationFrameId = null;
     this.lastTimestamp = null;
 
     // Bind the animate function to maintain 'this' context
     this.animate = this.animate.bind(this);
 
-    // Initial draw
+    // Initial draw and canvas sizing
+    this.resizeCanvas();
     this.drawSpools();
+    this.initResizeListener();
   }
 
-  // Resize canvas to match its display size
+  // Resize canvas to match its display size and adjust drawing scale
   resizeCanvas() {
-    this.canvas.width = this.canvas.clientWidth;
-    this.canvas.height = this.canvas.clientHeight;
+    const { clientWidth, clientHeight } = this.canvas;
+    this.canvas.width = clientWidth;
+    this.canvas.height = clientHeight;
     this.drawSpools();
   }
 
@@ -93,7 +99,7 @@ export class AnimationManager {
   }
 
   // Animation loop
-  animate(timestamp, playbackRate, direction) {
+  animate(timestamp, playbackRate = 1, direction = 1) {
     if (!this.lastTimestamp) this.lastTimestamp = timestamp;
     const deltaTime = (timestamp - this.lastTimestamp) / 1000; // Convert to seconds
     this.lastTimestamp = timestamp;
@@ -109,7 +115,7 @@ export class AnimationManager {
   }
 
   // Start animation
-  startAnimation(playbackRate, direction) {
+  startAnimation(playbackRate = 1, direction = 1) {
     if (this.isAnimating) return;
     this.isAnimating = true;
     this.lastTimestamp = null;
@@ -126,6 +132,12 @@ export class AnimationManager {
 
   // Initialize resize listener
   initResizeListener() {
-    window.addEventListener('resize', () => this.resizeCanvas());
+    window.addEventListener('resize', this.resizeCanvas.bind(this));
+  }
+
+  // Clean up listeners if needed
+  destroy() {
+    window.removeEventListener('resize', this.resizeCanvas.bind(this));
+    this.stopAnimation();
   }
 }

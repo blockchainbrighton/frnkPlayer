@@ -1,6 +1,6 @@
 // ui.js
 
-import { AudioManager } from './audio.js';
+import { AudioManager } from './audioJsModules/audioManager.js';
 import { AnimationManager } from './animation.js';
 
 class UIManager {
@@ -17,7 +17,8 @@ class UIManager {
       fastForwardButton: document.getElementById('fastForwardButton'),
       playbackSpeedSelector: document.getElementById('playbackSpeedSelector'),
       timerDisplay: document.getElementById('timerDisplay'),
-      spoolCanvas: document.getElementById('spoolCanvas'),
+      vinylCrackleButton: document.getElementById('effect-1-Button'),
+      gramophoneButton: document.getElementById('effect-2-Button'),
     };
 
     // Timer Interval ID
@@ -72,8 +73,8 @@ class UIManager {
       this.animationManager.initResizeListener();
       this.animationManager.resizeCanvas();
 
-      // Load all audio resources
-      await this.audioManager.loadAllAudio();
+      // Initialize AudioManager
+      await this.audioManager.initialize();
 
       // Enable transport buttons after audio is loaded
       this.enableTransportButtons();
@@ -167,6 +168,17 @@ class UIManager {
       }
     });
 
+    // Effect Buttons
+    this.elements.vinylCrackleButton.addEventListener('click', () => {
+      this.audioManager.toggleEffect('crackle');
+      this.elements.vinylCrackleButton.classList.toggle('active');
+    });
+
+    this.elements.gramophoneButton.addEventListener('click', () => {
+      this.audioManager.toggleEffect('gramophone');
+      this.elements.gramophoneButton.classList.toggle('active');
+    });
+
     // Ensure timer interval is stopped on page unload
     window.addEventListener('beforeunload', () => {
       this.stopTimerInterval();
@@ -213,7 +225,7 @@ class UIManager {
    * Handle double click on the stop button: stop playback and reset to beginning.
    */
   handleStopDoubleClick() {
-    // Play stop button press sound (you can choose to play a different sound if desired)
+    // Play reset button press sound
     this.audioManager.playResetButtonPress();
 
     // Reset audio playback
@@ -304,18 +316,7 @@ class UIManager {
     const totalDuration = this.audioManager.audioBuffers.main
       ? this.audioManager.audioBuffers.main.duration
       : 0;
-    const currentPos = this.audioManager.isPlaying
-      ? Math.min(
-          Math.max(
-            this.audioManager.currentPosition +
-              (this.audioManager.audioContext.currentTime - this.audioManager.startTime) *
-                this.audioManager.playbackRate *
-                this.audioManager.direction,
-            0
-          ),
-          totalDuration
-        )
-      : this.audioManager.currentPosition;
+    const currentPos = this.audioManager.getCurrentPosition();
     this.elements.timerDisplay.textContent = `${this.formatTime(
       currentPos
     )} / ${this.formatTime(totalDuration)}`;

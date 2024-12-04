@@ -4,26 +4,61 @@
   <meta charset="UTF-8">
   <title>Tape Deck Simulator</title>
   <style>
+ 
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
+      display: flex;
+      flex-direction: column; /* Stack Tape Deck and Controls vertically */
+      justify-content: center;
+      align-items: center;
+      height: 100vh; /* Full viewport height */
+      background-color: #000000;
+      overflow: hidden; /* Prevent scrollbars */
+    }
+
+    /* Main container splits the viewport into 90% Tape Deck and 10% Controls */
+    #mainContainer {
+      display: flex;
+      flex-direction: column;
+      height: 80%;
+      max-width: 400px; /* Optional: Max width to prevent overexpansion on large screens */
+    }
+
+    /* Tape Deck Container occupies 90% of the viewport height */
+    #container {
+      position: relative;
+      flex: 9; /* 90% */
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      background-color: #333;
-      margin: 0;
     }
-    #container {
+
+    /* Tape Deck Container content */
+    #tapeDeckContainer {
       position: relative;
-      width: auto;
-      height: 80vh; /* Set container height to 80% of viewport height */
-      max-width: 90vw; /* Limit the width to 90% of the viewport */
-    }
-    #tapeDeckImage {
       width: 100%;
       height: 100%;
-      object-fit: contain; /* Ensure the entire image is visible */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Tape Deck Image scales to fit the container while maintaining aspect ratio */
+    #tapeDeckImage {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
       display: block;
     }
+
+    /* Canvas overlays the tape deck image */
     canvas {
       position: absolute;
       top: 0;
@@ -31,116 +66,235 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
+      z-index: 1;
     }
 
-   /* Container for playback speed and timer */
-    .playback-timer-container {
-        position: absolute;
-        bottom: -20; /* Align at the bottom of the main container */
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        align-items: center;
-        gap: 10px; /* Space between the dropdown and timer */
-    }
-
-    /* Adjust styles for the timer */
-    #timerDisplay {
-        position: relative; /* Adjusted to work within the flex container */
-        color: white;
-        font-size: 1 rem;
-        background: rgba(0, 0, 0, 0.5);
-        border-radius: 5px;
-        white-space: nowrap; /* Prevent text wrapping */
-    }
-
-    /* Button Container Styles */
+    /* Button Container positioned at the bottom of the Tape Deck Container */
     .button-container {
       position: absolute;
-      bottom: 4.2%; /* Position buttons 4.2% from the bottom of the container */
+      bottom: 3.5%;
       left: 50%;
-      transform: translateX(-50%); /* Center the container horizontally */
+      transform: translateX(-50%);
+      width: 90%; /* Adjust as needed */
       display: flex;
-      gap: 1px; /* Space between buttons */
-      flex-wrap: nowrap;
-      justify-content: center;
+      justify-content: space-around;
+      z-index: 2;
     }
-    /* Button Styles */
+
+    /* Individual Buttons */
     .button {
-      width: 74px;
-      height: 82px;
+      flex: 1;
       max-width: 100px;
-      max-height: 100px;
-      min-width: 20px;
-      min-height: 30px;
+      max-height: 110px;
+      aspect-ratio: 1 / 1.2; /* Slightly taller button */
       background: rgba(85, 85, 85, 0.8);
       color: white;
       border: none;
-      border-radius: 3px; /* Slightly rounded corners */
+      border-radius: 3px;
       cursor: pointer;
-
-      /* Reactive font size */
-      font-size: clamp(0.5rem, 2vw, 0.3rem);
-
+      font-size: 1.2vw;
       display: flex;
       justify-content: center;
       align-items: center;
       text-align: center;
-      padding: 0; /* Remove padding to maintain square shape */
-      box-sizing: border-box;
       transition: background 0.3s, font-size 0.3s;
+      margin: 0 1px; /* Space between buttons */
     }
 
-    /* Button Hover Effect */
     .button:hover {
       background: rgba(100, 100, 100, 0.9);
     }
 
-    
-
-    /* Active Button Styles */
     .button.active {
-        background: rgba(16, 177, 27, 0.9); /* Example: Orange background */
-        box-shadow: 0 0 10px rgba(11, 127, 19, 0.9);
-        }
+      background: rgba(16, 177, 27, 0.9);
+      box-shadow: 0 0 10px rgba(11, 127, 19, 0.9);
+    }
 
-        /* Optional: Disabled Button Styles */
-        .button:disabled {
-        background: rgba(85, 85, 85, 0.5);
-        cursor: not-allowed;
-        }
+    .button:disabled {
+      background: rgba(85, 85, 85, 0.5);
+      cursor: not-allowed;
+    }
 
-    /* Responsive Button Sizing */
-    @media (max-width: 600px) {
+    /* Controls Container occupies 10% of the viewport height */
+    .controls-container {
+      flex: 1; /* 10% */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 0 20px; /* Optional: Padding for better spacing */
+    }
+
+    /* Playback Timer and Speed Selector */
+    .playback-timer-container {
+      display: flex;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 0.5em 1em;
+      border-radius: 5px;
+      z-index: 2;
+      gap: 20px; /* Space between speed selector and timer */
+    }
+
+    #timerDisplay {
+      color: white;
+      font-size: 1.5vw;
+      white-space: nowrap;
+      margin-left: 10px;
+    }
+
+    #playbackSpeedSelector {
+      padding: 0.3em 0.6em;
+      font-size: 1.2vw;
+      border: none;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+    }
+
+    /* Responsive Design Adjustments */
+    @media (max-width: 768px) {
       .button {
-        width: 80px;
-        height: 80px;
+        flex: 0 0 20%;
+        font-size: 2vw;
+      }
+
+      #timerDisplay {
+        font-size: 2vw;
+      }
+
+      #playbackSpeedSelector {
+        font-size: 2vw;
+      }
+
+      .playback-timer-container {
+        gap: 10px;
+        padding: 0.4em 0.8em;
       }
     }
+
+    @media (max-width: 480px) {
+      .button {
+        flex: 0 0 25%;
+        font-size: 2.5vw;
+      }
+
+      #timerDisplay {
+        font-size: 2.5vw;
+      }
+
+      #playbackSpeedSelector {
+        font-size: 2.5vw;
+      }
+
+      .playback-timer-container {
+        gap: 5px;
+        padding: 0.3em 0.6em;
+      }
+    }
+
+    /* Position each button using left percentages */
+    #recordButton {
+      left: 5%;
+    }
+    #playButton {
+      left: 25%;
+    }
+    #rewindButton {
+      left: 45%;
+    }
+    #fastForwardButton {
+      left: 65%;
+    }
+    #stopButton {
+      left: 85%;
+    }
+
+    /* Effect Button Container Styles */
+.effect-button-container {
+  display: flex;
+  position: absolute;
+  top: 24%;
+  height: 5%;
+  width: 10%;
+  justify-content: center; /* Center the buttons horizontally */
+  gap: 100px; /* Add spacing between buttons */
+  margin-top: 20px; /* Add some space above the container */
+}
+
+/* Shared Button Styles */
+.effect-button-container .button {
+  padding: 10px 20px; /* Add some padding for a comfortable size */
+  font-size: 1rem; /* Adjust the font size */
+  border: none; /* Remove default button border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
+  color: white; /* Text color */
+  font-weight: bold;
+}
+
+/* Specific Button Colors */
+#effect-1-Button {
+  background-color: blue; /* Blue background */
+}
+
+#effect-2-Button {
+  background-color: orange; /* Orange background */
+}
+
+/* Hover Effects */
+#effect-1-Button:hover {
+  background-color: darkblue; /* Darker blue on hover */
+}
+
+#effect-2-Button:hover {
+  background-color: darkorange; /* Darker orange on hover */
+}
+
+/* Active Effects */
+#effect-1-Button:active, #effect-2-Button:active {
+  transform: scale(0.95); /* Slightly shrink on click */
+}
+
   </style>
 </head>
 <body>
+  <div id="mainContainer">
     <div id="container">
+      <div id="tapeDeckContainer">
         <img id="tapeDeckImage" src="./assets/tapeDeck.JPG" alt="Tape Deck">
         <canvas id="spoolCanvas"></canvas>
+
+        <div class ="effect-button-container">
+          <button class="button" id="effect-1-Button">Vinyl Crackle</button>
+          <button class="button" id="effect-2-Button">Tone Wheel</button>
+
+        </div>
+
         <div class="button-container">
-            <button class="button" id="recordButton">Record</button>
-            <button class="button" id="playButton">Play</button>
-            <button class="button" id="rewindButton">Rewind</button>
-            <button class="button" id="fastForwardButton">Fast-F</button>
-            <button class="button" id="stopButton">Stop Reset</button>
+          <button class="button" id="recordButton">Record</button>
+          <button class="button" id="playButton">Play</button>
+          <button class="button" id="rewindButton">Rewind</button>
+          <button class="button" id="fastForwardButton">Fast-F</button>
+          <button class="button" id="stopButton">Stop Reset</button>
         </div>
-        <div class="playback-timer-container">
-            <select id="playbackSpeedSelector" class="speed-selector">
-                <option value="0.8">33 RPM</option>
-                <option value="1" selected>Normal Speed</option>
-                <option value="1.2">45 RPM</option>
-            </select>
-            <div id="timerDisplay">00:00 / 02:36</div>
-        </div>
+      </div>
     </div>
-        
-  <!-- Load the animation module -->
+
+    <div class="controls-container">
+      <div class="playback-timer-container">
+        <select id="playbackSpeedSelector" class="speed-selector">
+          <option value="0.8">33 RPM</option>
+          <option value="1" selected>Normal Speed</option>
+          <option value="1.2">45 RPM</option>
+        </select>
+        <div id="timerDisplay">00:00 / 02:36</div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="modules/ui.js"></script>
 </body>
 </html>
