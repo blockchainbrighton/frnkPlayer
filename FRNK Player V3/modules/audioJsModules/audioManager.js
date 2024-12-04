@@ -26,14 +26,14 @@ export class AudioManager {
     // Initialize the AudioContext
     this.initAudioContext();
 
-    // Initialize SoundEffects
+    // Initialize SoundEffects AFTER audioContext is initialized
     this.soundEffects = new SoundEffects(this.audioContext);
-  }
+}
 
-  /**
+ /**
    * Initializes the Audio Context.
    */
-  initAudioContext() {
+ initAudioContext() {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       // Handle context state changes
@@ -50,19 +50,65 @@ export class AudioManager {
   }
 
   /**
-   * Resets the playback position to the beginning.
-   */
-  resetAudio() {
-    this.stopAudio(); // Stop if playing
-    this.currentPosition = 0; // Reset position
-  }
-
-  /**
    * Initializes and loads all audio buffers.
    * @returns {Promise<void>}
    */
   async initialize() {
     await this.loadAllAudio();
+  }
+
+
+   /**
+   * Internal method to start the main audio playback.
+   * @private
+   */
+   _startMainAudio() {
+    this.sourceNode = this.audioContext.createBufferSource();
+    this.sourceNode.buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
+    this.sourceNode.playbackRate.value = this.playbackRate;
+
+    // Set the current source node in soundEffects
+    this.soundEffects.setCurrentSourceNode(this.sourceNode);
+
+    // Apply effects to the source node
+    this.soundEffects.applyEffects(this.sourceNode);
+
+    const offset = this.direction === 1
+      ? this.currentPosition
+      : this.audioBuffers.main.duration - this.currentPosition;
+    this.sourceNode.start(0, offset);
+    this.startTime = this.audioContext.currentTime;
+    this.isPlaying = true;
+
+    // Handle Song End
+    this.sourceNode.onended = () => {
+      this.stopAudio();
+      // Dispatch a custom event to notify that playback has ended
+      window.dispatchEvent(new Event('playbackEnded'));
+    };
+  }
+
+  /**
+   * Toggles a sound effect on or off.
+   * @param {string} effectName - The name of the effect to toggle.
+   */
+  toggleEffect(effectName) {
+    this.soundEffects.toggleEffect(effectName);
+
+    // Re-apply effects if playback is ongoing
+    if (this.isPlaying && this.sourceNode) {
+      this.soundEffects.applyEffects(this.sourceNode);
+    }
+  }
+
+
+
+  /**
+   * Resets the playback position to the beginning.
+   */
+  resetAudio() {
+    this.stopAudio(); // Stop if playing
+    this.currentPosition = 0; // Reset position
   }
 
   /**
@@ -317,21 +363,6 @@ export class AudioManager {
     this.playbackRate = rate;
     if (this.isPlaying && this.sourceNode) {
       this.sourceNode.playbackRate.setValueAtTime(this.playbackRate, this.audioContext.currentTime);
-    }
-  }
-
-  /**
-   * Toggles a sound effect on or off.
-   * @param {string} effectName - 'crackle' or 'gramophone'
-   */
-  toggleEffect(effectName) {
-    this.soundEffects.toggleEffect(effectName);
-
-    // If gramophone effect is toggled while playing, apply or remove effect
-    if (effectName === 'gramophone') {
-      if (this.isPlaying && this.sourceNode) {
-        this.soundEffects.applyEffects(this.sourceNode);
-      }
     }
   }
 

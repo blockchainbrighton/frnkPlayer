@@ -19,6 +19,11 @@ class UIManager {
       timerDisplay: document.getElementById('timerDisplay'),
       vinylCrackleButton: document.getElementById('effect-1-Button'),
       gramophoneButton: document.getElementById('effect-2-Button'),
+      wowAndFlutterButton: document.getElementById('effect-3-Button'),
+      tapeSaturationButton: document.getElementById('effect-4-Button'),
+      echoButton: document.getElementById('effect-5-Button'),
+      reversePlaybackButton: document.getElementById('effect-6-Button'),
+
     };
 
     // Timer Interval ID
@@ -178,6 +183,27 @@ class UIManager {
       this.audioManager.toggleEffect('gramophone');
       this.elements.gramophoneButton.classList.toggle('active');
     });
+
+    this.elements.wowAndFlutterButton.addEventListener('click', () => {
+      this.audioManager.toggleEffect('wowAndFlutter');
+      this.elements.wowAndFlutterButton.classList.toggle('active');
+    });
+
+    this.elements.tapeSaturationButton.addEventListener('click', () => {
+      this.audioManager.toggleEffect('tapeSaturation');
+      this.elements.tapeSaturationButton.classList.toggle('active');
+    });
+
+    this.elements.echoButton.addEventListener('click', () => {
+      this.audioManager.toggleEffect('echo');
+      this.elements.echoButton.classList.toggle('active');
+    });
+
+    this.elements.reversePlaybackButton.addEventListener('click', () => {
+      this.audioManager.toggleEffect('reversePlayback');
+      this.elements.reversePlaybackButton.classList.toggle('active');
+    });
+
 
     // Ensure timer interval is stopped on page unload
     window.addEventListener('beforeunload', () => {
