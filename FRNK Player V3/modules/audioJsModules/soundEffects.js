@@ -236,125 +236,259 @@ export class SoundEffects {
       console.log('Echo Effect stopped.');
     }
   
-    /**
-     * Creates the wow and flutter effect nodes.
-     */
-    createWowAndFlutterEffect() {
-      // Placeholder for wow and flutter effect
-      // Implement as needed
-      console.log('Wow and Flutter effect is not implemented yet.');
-    }
-  
-    /**
-     * Creates the tape saturation effect nodes.
-     */
-    createTapeSaturationEffect() {
-      // Placeholder for tape saturation effect
-      // Implement as needed
-      console.log('Tape Saturation effect is not implemented yet.');
-    }
-  
-    /**
-     * Applies the gramophone and echo effects to the source node.
-     * @param {AudioNode} sourceNode - The source node to apply effects to.
-     */
-    applyEffects(sourceNode) {
-      if (!sourceNode) return;
-  
-      sourceNode.disconnect();
-      let lastNode = sourceNode;
-  
-      // Apply gramophone effect if enabled
-      if (this.effectsEnabled.gramophone) {
-        console.log('Applying Gramophone Effect with settings:', {
-          peakingFilter: {
-            frequency: this.gramophone.peakingFilter.frequency.value,
-            Q: this.gramophone.peakingFilter.Q.value,
-            gain: this.gramophone.peakingFilter.gain.value,
-          },
-          lowShelfFilter: {
-            frequency: this.gramophone.lowShelfFilter.frequency.value,
-            gain: this.gramophone.lowShelfFilter.gain.value,
-          },
-        });
-        lastNode.connect(this.gramophone.peakingFilter);
-        lastNode = this.gramophone.lowShelfFilter;
-      }
-  
-      // Apply echo effect if enabled
-      if (this.effectsEnabled.echo) {
-        console.log('Applying Echo Effect with settings:', {
-          delayTime: this.echo.delayNode.delayTime.value,
-          feedbackGain: this.echo.feedbackGain.gain.value,
-          wetGain: this.echo.wetGain.gain.value,
-        });
-        lastNode.connect(this.echo.delayNode);
-        lastNode = this.echo.wetGain;
-      }
-  
-      // Connect the last node to the destination
-      lastNode.connect(this.audioContext.destination);
-  
-      // Start or stop echo effect based on its enabled state
-      if (this.effectsEnabled.echo) {
-        this.startEcho();
-      } else {
-        this.stopEcho();
-      }
-  
-      console.log('Applied enabled effects to the audio chain.');
-    }
-  
-    /**
-     * Toggles a sound effect on or off.
-     * @param {string} effectName - 'crackle', 'gramophone', or 'echo'
-     */
-    toggleEffect(effectName) {
-      if (!(effectName in this.effectsEnabled)) {
-        console.warn(`Effect "${effectName}" is not defined.`);
-        return;
-      }
-  
-      this.effectsEnabled[effectName] = !this.effectsEnabled[effectName];
-      console.log(`Toggling ${effectName} Effect. New State: ${this.effectsEnabled[effectName]}`);
-  
-      switch (effectName) {
-        case 'crackle':
-          this.effectsEnabled.crackle ? this.startCrackle() : this.stopCrackle();
-          break;
-        case 'gramophone':
-          // Effects are applied in the AudioManager's applyEffects method
-          console.log('Gramophone effect toggled. Reapplying effects if necessary.');
-          break;
-        case 'echo':
-          this.effectsEnabled.echo ? this.startEcho() : this.stopEcho();
-          break;
-        default:
-          break;
-      }
-    }
-  
-    /**
-     * Disconnects all effect nodes from the audio chain.
-     */
-    disconnectEffects() {
-      // Disconnect gramophone effect
-      if (this.gramophone.peakingFilter && this.gramophone.lowShelfFilter) {
-        this.gramophone.peakingFilter.disconnect();
-        this.gramophone.lowShelfFilter.disconnect();
-      }
-  
-      // Disconnect echo effect
-      if (this.echo.wetGain) {
-        this.echo.wetGain.disconnect();
-      }
-  
-      // Disconnect crackle effect
-      if (this.crackle.gain) {
-        this.crackle.gain.disconnect();
-      }
-  
-      console.log('All effects have been disconnected from the audio chain.');
-    }
-  }
-  
+           /**
+         * Creates the wow and flutter effect nodes.
+         */
+           createWowAndFlutterEffect() {
+            const { audioContext } = this;
+      
+            // Create a DelayNode to introduce slight pitch variations
+            const delayNode = audioContext.createDelay();
+            delayNode.delayTime.value = 0.002; // 2ms delay for subtle effect
+      
+            // Create a GainNode to control the depth of the modulation
+            const modulationGain = audioContext.createGain();
+            modulationGain.gain.value = 0.001; // Modulation depth
+      
+            // Create an OscillatorNode to act as LFO (Low-Frequency Oscillator)
+            const lfo = audioContext.createOscillator();
+            lfo.type = 'sine';
+            lfo.frequency.value = 0.5; // 0.5 Hz for slow modulation
+      
+            // Connect the LFO to the modulationGain
+            lfo.connect(modulationGain);
+      
+            // Connect the modulationGain to the delayNode's delayTime to modulate it
+            modulationGain.connect(delayNode.delayTime);
+      
+            // Start the LFO
+            lfo.start();
+      
+            // Assign nodes to the wowAndFlutter effect state
+            this.wowAndFlutter.delayNode = delayNode;
+            this.wowAndFlutter.lfo = lfo;
+            this.wowAndFlutter.modulationGain = modulationGain;
+            this.wowAndFlutter.started = false;
+      
+            console.log('Wow and Flutter effect created.');
+          }
+      
+          /**
+           * Creates the tape saturation effect nodes.
+           */
+          createTapeSaturationEffect() {
+            const { audioContext } = this;
+      
+            // Create a WaveShaperNode for saturation/distortion
+            const waveshaper = audioContext.createWaveShaper();
+      
+            // Define the saturation curve
+            const curve = new Float32Array(65536);
+            const k = 3; // Saturation amount
+            for (let i = 0; i < curve.length; i++) {
+              const x = (i * 2) / curve.length - 1;
+              curve[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+            }
+            waveshaper.curve = curve;
+            waveshaper.oversample = '4x';
+      
+            // Create a GainNode to control the input level before saturation
+            const inputGain = audioContext.createGain();
+            inputGain.gain.value = 0.8; // Reduce input level to prevent excessive distortion
+      
+            // Create a GainNode to control the output level after saturation
+            const outputGain = audioContext.createGain();
+            outputGain.gain.value = 1.2; // Boost output level to compensate for input reduction
+      
+            // Connect the nodes: inputGain -> waveshaper -> outputGain
+            inputGain.connect(waveshaper).connect(outputGain);
+      
+            // Assign nodes to the tapeSaturation effect state
+            this.tapeSaturation.inputGain = inputGain;
+            this.tapeSaturation.waveshaper = waveshaper;
+            this.tapeSaturation.outputGain = outputGain;
+      
+            console.log('Tape Saturation effect created.');
+          }
+      
+          /**
+           * Applies the gramophone, echo, wowAndFlutter, and tapeSaturation effects to the source node.
+           * @param {AudioNode} sourceNode - The source node to apply effects to.
+           */
+          applyEffects(sourceNode) {
+            if (!sourceNode) return;
+      
+            sourceNode.disconnect();
+            let lastNode = sourceNode;
+      
+            // Apply gramophone effect if enabled
+            if (this.effectsEnabled.gramophone) {
+              console.log('Applying Gramophone Effect with settings:', {
+                peakingFilter: {
+                  frequency: this.gramophone.peakingFilter.frequency.value,
+                  Q: this.gramophone.peakingFilter.Q.value,
+                  gain: this.gramophone.peakingFilter.gain.value,
+                },
+                lowShelfFilter: {
+                  frequency: this.gramophone.lowShelfFilter.frequency.value,
+                  gain: this.gramophone.lowShelfFilter.gain.value,
+                },
+              });
+              lastNode.connect(this.gramophone.peakingFilter);
+              lastNode = this.gramophone.lowShelfFilter;
+            }
+      
+            // Apply echo effect if enabled
+            if (this.effectsEnabled.echo) {
+              console.log('Applying Echo Effect with settings:', {
+                delayTime: this.echo.delayNode.delayTime.value,
+                feedbackGain: this.echo.feedbackGain.gain.value,
+                wetGain: this.echo.wetGain.gain.value,
+              });
+              lastNode.connect(this.echo.delayNode);
+              lastNode = this.echo.wetGain;
+            }
+      
+            // Apply wow and flutter effect if enabled
+            if (this.effectsEnabled.wowAndFlutter) {
+              console.log('Applying Wow and Flutter Effect.');
+              lastNode.connect(this.wowAndFlutter.delayNode);
+              lastNode = this.wowAndFlutter.delayNode;
+            }
+      
+            // Apply tape saturation effect if enabled
+            if (this.effectsEnabled.tapeSaturation) {
+              console.log('Applying Tape Saturation Effect.');
+              lastNode.connect(this.tapeSaturation.inputGain);
+              lastNode = this.tapeSaturation.outputGain;
+            }
+      
+            // Connect the last node to the destination
+            lastNode.connect(this.audioContext.destination);
+      
+            // Start or stop echo effect based on its enabled state
+            if (this.effectsEnabled.echo) {
+              this.startEcho();
+            } else {
+              this.stopEcho();
+            }
+      
+            console.log('Applied enabled effects to the audio chain.');
+          }
+      
+          /**
+           * Toggles a sound effect on or off.
+           * @param {string} effectName - 'crackle', 'gramophone', 'echo', 'wowAndFlutter', 'tapeSaturation'
+           */
+          toggleEffect(effectName) {
+            if (!(effectName in this.effectsEnabled)) {
+              console.warn(`Effect "${effectName}" is not defined.`);
+              return;
+            }
+      
+            this.effectsEnabled[effectName] = !this.effectsEnabled[effectName];
+            console.log(`Toggling ${effectName} Effect. New State: ${this.effectsEnabled[effectName]}`);
+      
+            switch (effectName) {
+              case 'crackle':
+                this.effectsEnabled.crackle ? this.startCrackle() : this.stopCrackle();
+                break;
+              case 'gramophone':
+                // Effects are applied in the AudioManager's applyEffects method
+                console.log('Gramophone effect toggled. Reapplying effects if necessary.');
+                break;
+              case 'echo':
+                this.effectsEnabled.echo ? this.startEcho() : this.stopEcho();
+                break;
+              case 'wowAndFlutter':
+                this.effectsEnabled.wowAndFlutter ? this.startWowAndFlutter() : this.stopWowAndFlutter();
+                break;
+              case 'tapeSaturation':
+                // Tape Saturation is a static effect; no start/stop required
+                if (this.effectsEnabled.tapeSaturation) {
+                  console.log('Tape Saturation effect enabled.');
+                } else {
+                  console.log('Tape Saturation effect disabled.');
+                }
+                break;
+              default:
+                break;
+            }
+          }
+      
+          /**
+           * Starts the wow and flutter effect.
+           */
+          startWowAndFlutter() {
+            if (this.wowAndFlutter.started) return;
+      
+            // Connect the wow and flutter delay node to the destination
+            this.wowAndFlutter.delayNode.connect(this.audioContext.destination);
+            this.wowAndFlutter.started = true;
+      
+            console.log('Wow and Flutter Effect started.');
+          }
+      
+          /**
+           * Stops the wow and flutter effect.
+           */
+          stopWowAndFlutter() {
+            if (!this.wowAndFlutter.started) return;
+      
+            // Disconnect the wow and flutter delay node from the destination
+            this.wowAndFlutter.delayNode.disconnect(this.audioContext.destination);
+            this.wowAndFlutter.started = false;
+      
+            // Stop and recreate the LFO for future use
+            try {
+              this.wowAndFlutter.lfo.stop();
+            } catch (error) {
+              console.warn('Error stopping Wow and Flutter LFO:', error);
+            }
+            this.createWowAndFlutterEffect();
+      
+            console.log('Wow and Flutter Effect stopped.');
+          }
+      
+          /**
+           * Disconnects all effect nodes from the audio chain.
+           */
+          disconnectEffects() {
+            // Disconnect gramophone effect
+            if (this.gramophone.peakingFilter && this.gramophone.lowShelfFilter) {
+              this.gramophone.peakingFilter.disconnect();
+              this.gramophone.lowShelfFilter.disconnect();
+            }
+      
+            // Disconnect echo effect
+            if (this.echo.wetGain) {
+              this.echo.wetGain.disconnect();
+            }
+      
+            // Disconnect crackle effect
+            if (this.crackle.gain) {
+              this.crackle.gain.disconnect();
+            }
+      
+            // Disconnect wow and flutter effect
+            if (this.wowAndFlutter.delayNode) {
+              this.wowAndFlutter.delayNode.disconnect();
+            }
+      
+            // Disconnect tape saturation effect
+            if (this.tapeSaturation.outputGain) {
+              this.tapeSaturation.outputGain.disconnect();
+            }
+      
+            // Stop LFOs if any
+            if (this.wowAndFlutter.lfo) {
+              try {
+                this.wowAndFlutter.lfo.stop();
+              } catch (error) {
+                console.warn('Error stopping Wow and Flutter LFO:', error);
+              }
+            }
+      
+            console.log('All effects have been disconnected from the audio chain.');
+          }
+        }
