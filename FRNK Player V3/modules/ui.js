@@ -214,7 +214,7 @@ class UIManager {
    */
   handleStopDoubleClick() {
     // Play stop button press sound (you can choose to play a different sound if desired)
-    this.audioManager.playStopButtonPress();
+    this.audioManager.playResetButtonPress();
 
     // Reset audio playback
     this.audioManager.resetAudio();
