@@ -174,6 +174,17 @@
       }
     }
 
+    @media (max-width: 600px) {
+    .effect-button-container .button {
+        width: 30px;
+        height: 30px;
+        font-size: 0.6rem;
+    }
+    .effect-button-container {
+        gap: 5px;
+    }
+    }
+
     @media (max-width: 480px) {
       .button {
         flex: 0 0 25%;
@@ -211,52 +222,100 @@
       left: 85%;
     }
 
-    /* Effect Button Container Styles */
-.effect-button-container {
-  display: flex;
-  position: absolute;
-  top: 24%;
-  height: 5%;
-  width: 10%;
-  justify-content: center; /* Center the buttons horizontally */
-  gap: 100px; /* Add spacing between buttons */
-  margin-top: 20px; /* Add some space above the container */
-}
+   /* Effect Button Container Styles */
+    .effect-button-container {
+    display: flex;
+    position: absolute;
+    top: 24%;
+    left: 50%; /* Center the container horizontally */
+    transform: translateX(-50%); /* Adjust for perfect centering */
+    height: auto; /* Allow height to adjust based on content */
+    width: auto; /* Allow width to adjust based on content */
+    justify-content: center; /* Center the buttons horizontally within the container */
+    align-items: center; /* Center the buttons vertically within the container */
+    gap: 10px; /* Reduce spacing between buttons for a compact group */
+    padding: 10px; /* Optional: Add some padding around the button group */
+    background: rgba(0, 0, 0, 0.1); /* Optional: Background for better visibility */
+    border-radius: 8px; /* Optional: Rounded corners for the container */
+    }
 
-/* Shared Button Styles */
-.effect-button-container .button {
-  padding: 10px 20px; /* Add some padding for a comfortable size */
-  font-size: 1rem; /* Adjust the font size */
-  border: none; /* Remove default button border */
-  border-radius: 5px; /* Rounded corners */
-  cursor: pointer; /* Pointer cursor on hover */
-  transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
-  color: white; /* Text color */
-  font-weight: bold;
-}
+    /* Shared Button Styles */
+    .effect-button-container .button {
+    width: 40px; /* Fixed width for square shape */
+    height: 40px; /* Fixed height for square shape */
+    padding: 0; /* Remove padding to maintain square dimensions */
+    font-size: 0.75rem; /* Smaller font size to fit within the square */
+    border: none; /* Remove default button border */
+    border-radius: 4px; /* Slightly rounded corners for a neat look */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
+    color: white; /* Text color */
+    font-weight: bold;
+    display: flex; /* Use flex to center text/icon */
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    }
 
-/* Specific Button Colors */
-#effect-1-Button {
-  background-color: blue; /* Blue background */
-}
+    /* Specific Button Colors */
+    #effect-1-Button {
+    background-color: blue; /* Blue background */
+    }
 
-#effect-2-Button {
-  background-color: orange; /* Orange background */
-}
+    #effect-2-Button {
+    background-color: orange; /* Orange background */
+    }
 
-/* Hover Effects */
-#effect-1-Button:hover {
-  background-color: darkblue; /* Darker blue on hover */
-}
+    #effect-3-Button {
+    background-color: green; /* Example color */
+    }
 
-#effect-2-Button:hover {
-  background-color: darkorange; /* Darker orange on hover */
-}
+    #effect-4-Button {
+    background-color: purple; /* Example color */
+    }
 
-/* Active Effects */
-#effect-1-Button:active, #effect-2-Button:active {
-  transform: scale(0.95); /* Slightly shrink on click */
-}
+    #effect-5-Button {
+    background-color: teal; /* Example color */
+    }
+
+    #effect-6-Button {
+    background-color: crimson; /* Example color */
+    }
+
+    /* Hover Effects */
+    #effect-1-Button:hover {
+    background-color: darkblue; /* Darker blue on hover */
+    }
+
+    #effect-2-Button:hover {
+    background-color: darkorange; /* Darker orange on hover */
+    }
+
+    #effect-3-Button:hover {
+    background-color: darkgreen; /* Darker green on hover */
+    }
+
+    #effect-4-Button:hover {
+    background-color: indigo; /* Darker purple on hover */
+    }
+
+    #effect-5-Button:hover {
+    background-color: darkslategray; /* Darker teal on hover */
+    }
+
+    #effect-6-Button:hover {
+    background-color: darkred; /* Darker crimson on hover */
+    }
+
+    /* Active Effects */
+    #effect-1-Button:active,
+    #effect-2-Button:active,
+    #effect-3-Button:active,
+    #effect-4-Button:active,
+    #effect-5-Button:active,
+    #effect-6-Button:active {
+    transform: scale(0.95); /* Slightly shrink on click */
+    }
+
 
   </style>
 </head>
@@ -267,11 +326,14 @@
         <img id="tapeDeckImage" src="./assets/tapeDeck.JPG" alt="Tape Deck">
         <canvas id="spoolCanvas"></canvas>
 
-        <div class ="effect-button-container">
-          <button class="button" id="effect-1-Button">Vinyl Crackle</button>
-          <button class="button" id="effect-2-Button">Tone Wheel</button>
-
-        </div>
+        <div class="effect-button-container">
+            <button class="button" id="effect-1-Button">Vinyl Crackle</button>
+            <button class="button" id="effect-2-Button">Tone Wheel</button>
+            <button class="button" id="effect-3-Button">Wow & Flutter</button>
+            <button class="button" id="effect-4-Button">Tape Saturation</button>
+            <button class="button" id="effect-5-Button">Echo</button>
+            <button class="button" id="effect-6-Button">Reverse Playback</button>
+          </div>
 
         <div class="button-container">
           <button class="button" id="recordButton">Record</button>
