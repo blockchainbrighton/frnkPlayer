@@ -1,13 +1,13 @@
-// UIManager.js
+// uiModules/UIManager.js
 
-import { AudioProcessor } from './audioJsModules/audioProcessor.js';
-import { AudioPlayer } from './audioJsModules/audioPlayer.js';
-import { AnimationManager } from './animationModules/animation.js';
-import { LoadingScreen } from './uiModules/LoadingScreen.js';
-import { TransportControls } from './uiModules/TransportControls.js';
-import { EffectControls } from './uiModules/EffectControls.js';
-import { VolumeControls } from './uiModules/VolumeControls.js';
-import { TimerDisplay } from './uiModules/TimerDisplay.js';
+import { AudioProcessor } from '../audioJsModules/audioProcessor.js';
+import { AudioPlayer } from '../audioJsModules/audioPlayer.js';
+import { AnimationManager } from '../animationModules/animation.js';
+import { LoadingScreen } from './LoadingScreen.js';
+import { TransportControls } from './TransportControls.js';
+import { EffectControls } from './EffectControls.js';
+import { VolumeControls } from './VolumeControls.js';
+import { TimerDisplay } from './TimerDisplay.js';
 
 class UIManager {
   constructor() {

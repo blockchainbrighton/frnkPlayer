@@ -54,66 +54,93 @@ export class AudioPlayer {
     }
   }
 
-  /**
-   * Plays a specific AudioBuffer through a designated GainNode.
-   * @param {AudioBuffer} buffer - The AudioBuffer to play.
-   * @param {Object} [options] - Playback options.
-   * @param {number} [options.offset=0] - Start time in seconds.
-   * @param {number} [options.playbackRate=1] - Playback rate.
-   * @param {boolean} [options.loop=false] - Whether to loop the audio.
-   * @param {GainNode} [options.gainNode=null] - The GainNode to route the audio through.
-   * @returns {AudioBufferSourceNode|null} - The source node if playback starts, else null.
+   /**
+   * Toggles a sound effect on or off.
+   * @param {string} effectName - The name of the effect to toggle.
    */
-  playSound(buffer, { offset = 0, playbackRate = 1, loop = false, gainNode = null } = {}) {
+   toggleEffect(effectName) {
+    if (typeof this.processor.toggleEffect === 'function') {
+      this.processor.toggleEffect(effectName);
+    } else {
+      console.error('toggleEffect method is not defined in AudioProcessor.');
+    }
+  }
+
+
+  /**
+ * Plays a specific AudioBuffer through a designated GainNode.
+ * @param {AudioBuffer} buffer - The AudioBuffer to play.
+ * @param {Object} [options] - Playback options.
+ * @param {number} [options.offset=0] - Start time in seconds.
+ * @param {number} [options.playbackRate=1] - Playback rate.
+ * @param {boolean} [options.loop=false] - Whether to loop the audio.
+ * @param {GainNode} [options.gainNode=null] - The GainNode to route the audio through.
+ * @param {boolean} [options.useEffects=true] - Whether to apply SoundEffects.
+ * @returns {AudioBufferSourceNode|null} - The source node if playback starts, else null.
+ */
+playSound(buffer, { offset = 0, playbackRate = 1, loop = false, gainNode = null, useEffects = true } = {}) {
     if (!buffer) {
       console.warn('Attempted to play a null or undefined buffer.');
       return null;
     }
-
+  
     const source = this.processor.audioContext.createBufferSource();
     source.buffer = buffer;
     source.playbackRate.value = playbackRate;
     source.loop = loop;
-
-    // Connect the source to the specified GainNode or directly to the destination
-    if (gainNode) {
+  
+    // Apply effects if required
+    if (useEffects) {
+      this.processor.applyEffects(source);
+    } else if (gainNode) {
       source.connect(gainNode);
     } else {
       source.connect(this.processor.masterGain);
     }
-
+  
     source.start(0, offset);
-
+  
     if (!loop) {
       source.onended = () => {
         source.disconnect();
       };
     }
-
+  
+    console.log(`Playing sound: ${buffer.name || 'Unnamed Buffer'}, Use Effects: ${useEffects}`);
     return source;
   }
 
   /**
-   * Plays the general button press sound.
-   */
-  playButtonPress() {
-    this.playSound(this.audioBuffers.buttonPress, { gainNode: this.processor.buttonPressGain });
-  }
+     * Plays the general button press sound.
+     */
+    playButtonPress() {
+        this.playSound(this.audioBuffers.buttonPress, { 
+        gainNode: this.processor.buttonPressGain,
+        useEffects: false // Button presses should not be affected by SoundEffects
+        });
+    }
+  
 
   /**
-   * Plays the stop button press sound.
-   */
-  playStopButtonPress() {
-    this.playSound(this.audioBuffers.stopButtonPress, { gainNode: this.processor.buttonPressGain });
-  }
-
-  /**
-   * Plays the reset button press sound.
-   */
-  playResetButtonPress() {
-    this.playSound(this.audioBuffers.resetButtonPress, { gainNode: this.processor.buttonPressGain });
-  }
-
+     * Plays the stop button press sound.
+     */
+    playStopButtonPress() {
+        this.playSound(this.audioBuffers.stopButtonPress, { 
+        gainNode: this.processor.buttonPressGain,
+        useEffects: false
+        });
+    }
+    
+    /**
+     * Plays the reset button press sound.
+     */
+    playResetButtonPress() {
+        this.playSound(this.audioBuffers.resetButtonPress, { 
+        gainNode: this.processor.buttonPressGain,
+        useEffects: false
+        });
+    }
+  
   /**
    * Starts playing the main audio based on the current direction and playback rate.
    */
@@ -132,38 +159,35 @@ export class AudioPlayer {
   }
 
   /**
-   * Internal method to start the main audio playback.
-   * @private
-   */
-  _startMainAudio() {
+ * Internal method to start the main audio playback.
+ * @private
+ */
+_startMainAudio() {
     const buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
     this.sourceNode = this.processor.audioContext.createBufferSource();
     this.sourceNode.buffer = buffer;
     this.sourceNode.playbackRate.value = this.playbackRate;
-
+  
     // Apply effects to the source node
     this.processor.applyEffects(this.sourceNode);
-
-    // Connect to the appropriate GainNode or destination
-    this.sourceNode.connect(this.processor.masterGain);
-
+  
     const offset = this.direction === 1
       ? this.currentPosition
       : this.audioBuffers.main.duration - this.currentPosition;
     this.sourceNode.start(0, offset);
     this.startTime = this.processor.audioContext.currentTime;
     this.isPlaying = true;
-
-    // Connect sound effects if enabled
-    this.processor.connectEffects();
-
+  
     // Handle Song End
     this.sourceNode.onended = () => {
       this.stopAudio();
       // Dispatch a custom event to notify that playback has ended
       window.dispatchEvent(new Event('playbackEnded'));
     };
+  
+    console.log('Main audio playback started with effects applied.');
   }
+  
 
   /**
    * Stops the main audio playback and disconnects effects.
