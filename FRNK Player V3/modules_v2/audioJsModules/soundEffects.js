@@ -1,351 +1,269 @@
 // audioJsModules/soundEffects.js
 
 export class SoundEffects {
-    constructor(audioContext) {
+  constructor(audioContext) {
       this.audioContext = audioContext;
-  
-      // Sound Effects State
       this.effectsEnabled = {
-        crackle: false,
-        gramophone: false,
-        echo: false,
-
+          crackle: false,
+          gramophone: false,
+          echo: false,
       };
-  
-      // Effect Nodes
-      this.effectNodes = {
-        crackle: null,
-        gramophone: null,
-        lowShelfFilter: null,
-        echo: null,
-
+      this.effectStates = {
+          crackle: { gain: null, source: null, started: false },
+          gramophone: { peakingFilter: null, lowShelfFilter: null },
+          echo: { delayNode: null, feedbackGain: null, wetGain: null, started: false },
       };
-  
-      // Initialize effect state objects
-      this.initializeEffectStateObjects();
-  
-      // Initialize all effects
       this.initializeEffects();
-    }
-  
-    /**
-     * Initialize effect state objects.
-     */
-    initializeEffectStateObjects() {
-      // Crackle Effect Components
-      this.crackle = {
-        gain: null,
-        source: null,
-        started: false,
-      };
-  
-      // Echo Effect Components
-      this.echo = {
-        delayNode: null,
-        feedbackGain: null,
-        wetGain: null,
-        started: false,
-      };
-  
-      // Gramophone Effect Components
-      this.gramophone = {
-        peakingFilter: null,
-        lowShelfFilter: null,
-      };
-    }
-  
-    /**
-     * Initializes all audio effect nodes.
-     */
-    initializeEffects() {
-      this.createCrackleEffect();
-      this.createGramophoneEffect();
-      this.createEchoEffect();
+  }
 
-    }
-  
-    /**
-     * Creates the crackle effect nodes.
-     */
-    createCrackleEffect() {
-      // Create a buffer with white noise
+  /**
+   * Helper method to create BiquadFilter with proper AudioParam assignments.
+   * @param {string} type - The type of BiquadFilter.
+   * @param {Object} options - The options to set on the filter.
+   * @returns {BiquadFilterNode}
+   */
+  createFilter(type, options = {}) {
+      const filter = this.audioContext.createBiquadFilter();
+      filter.type = type;
+
+      for (const [key, value] of Object.entries(options)) {
+          if (filter[key] instanceof AudioParam) {
+              filter[key].value = value;
+          } else {
+              filter[key] = value;
+          }
+      }
+
+      return filter;
+  }
+
+  /**
+   * Helper method to create GainNode with a specified gain value.
+   * @param {number} value - The gain value.
+   * @returns {GainNode}
+   */
+  createGainNode(value = 1) {
+      const gain = this.audioContext.createGain();
+      gain.gain.value = value;
+      return gain;
+  }
+
+  /**
+   * Helper method to create a BufferSource with white noise.
+   * @returns {AudioBuffer}
+   */
+  createNoiseBuffer() {
       const bufferSize = 2 * this.audioContext.sampleRate;
       const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
       const output = noiseBuffer.getChannelData(0);
-  
+
       for (let i = 0; i < bufferSize; i++) {
-        // Generate random crackle
-        output[i] = Math.random() * 2 - 1;
+          output[i] = Math.random() * 2 - 1;
       }
-  
-      // Create a buffer source for the noise
-      this.crackle.source = this.audioContext.createBufferSource();
-      this.crackle.source.buffer = noiseBuffer;
-      this.crackle.source.loop = true;
-  
-      // Create a bandpass filter to make it sound like crackle
-      const bandpass = this.audioContext.createBiquadFilter();
-      bandpass.type = 'bandpass';
-      bandpass.frequency.value = 1000;
-  
-      // Create a gain node to control the volume
-      this.crackle.gain = this.audioContext.createGain();
-      this.crackle.gain.gain.value = 0.1; // Adjust the volume of the crackle
-  
-      // Connect the nodes
-      this.crackle.source.connect(bandpass);
-      bandpass.connect(this.crackle.gain);
-  
-      // Save the crackle gain node for later connection
-      this.effectNodes.crackle = this.crackle.gain;
-    }
-  
-    /**
-         * Starts the crackle effect.
-         */
-    startCrackle() {
-        if (this.crackle.started) return;
 
-        // Start the crackle source
-        try {
-          this.crackle.source.start(0);
-        } catch (error) {
+      return noiseBuffer;
+  }
+
+  /**
+   * Initializes all audio effect nodes.
+   */
+  initializeEffects() {
+      this.initCrackle();
+      this.initGramophone();
+      this.initEcho();
+  }
+
+  /**
+   * Initializes the Crackle Effect.
+   */
+  initCrackle() {
+      const source = this.audioContext.createBufferSource();
+      source.buffer = this.createNoiseBuffer();
+      source.loop = true;
+
+      const bandpass = this.createFilter('bandpass', { frequency: 1000 });
+      const gain = this.createGainNode(0.1);
+
+      source.connect(bandpass).connect(gain);
+      this.effectStates.crackle = { gain, source, started: false };
+  }
+
+  /**
+   * Starts the Crackle Effect.
+   */
+  startCrackle() {
+      const crackle = this.effectStates.crackle;
+      if (crackle.started) return;
+      try {
+          crackle.source.start(0);
+      } catch (error) {
           console.warn('Crackle source already started:', error);
-        }
-        this.crackle.started = true;
-
-        // Connect the crackle gain to the destination
-        this.crackle.gain.connect(this.audioContext.destination);
-        console.log('Crackle Effect started.');
       }
+      crackle.gain.connect(this.audioContext.destination);
+      crackle.started = true;
+      console.log('Crackle Effect started.');
+  }
 
-      /**
-       * Stops the crackle effect.
-       */
-      stopCrackle() {
-        if (!this.crackle.started) return;
-
-        // Disconnect the crackle gain from the destination
-        this.crackle.gain.disconnect();
-        this.crackle.started = false;
-
-        // Stop the crackle source
-        try {
-          this.crackle.source.stop();
-        } catch (error) {
+  /**
+   * Stops the Crackle Effect.
+   */
+  stopCrackle() {
+      const crackle = this.effectStates.crackle;
+      if (!crackle.started) return;
+      crackle.gain.disconnect();
+      try {
+          crackle.source.stop();
+      } catch (error) {
           console.warn('Error stopping crackle source:', error);
-        }
+      }
+      this.initCrackle();
+      crackle.started = false;
+      console.log('Crackle Effect stopped.');
+  }
 
-        // Recreate the crackle source for future use
-        this.createCrackleEffect();
-        console.log('Crackle Effect stopped.');
+  /**
+   * Initializes the Gramophone Effect.
+   */
+  initGramophone() {
+      const peaking = this.createFilter('peaking', {
+          frequency: 1000,
+          Q: 1,
+          gain: 6,
+      });
+      const lowShelf = this.createFilter('lowshelf', {
+          frequency: 200,
+          gain: -6,
+      });
+      peaking.connect(lowShelf);
+      this.effectStates.gramophone = { peakingFilter: peaking, lowShelfFilter: lowShelf };
+      console.log('Gramophone effect created with peaking and low-shelf filters.');
+  }
+
+  /**
+   * Initializes the Echo Effect.
+   */
+  initEcho() {
+      const delay = this.audioContext.createDelay();
+      delay.delayTime.value = 0.3;
+
+      const feedback = this.createGainNode(0.4);
+      const wet = this.createGainNode(0.5);
+
+      delay.connect(feedback).connect(delay);
+      delay.connect(wet);
+      this.effectStates.echo = { delayNode: delay, feedbackGain: feedback, wetGain: wet, started: false };
+  }
+
+  /**
+   * Starts the Echo Effect.
+   */
+  startEcho() {
+      const echo = this.effectStates.echo;
+      if (echo.started) return;
+      echo.wetGain.connect(this.audioContext.destination);
+      echo.started = true;
+      console.log('Echo Effect started.');
+  }
+
+  /**
+   * Stops the Echo Effect.
+   */
+  stopEcho() {
+      const echo = this.effectStates.echo;
+      if (!echo.started) return;
+      echo.wetGain.disconnect();
+      echo.started = false;
+      console.log('Echo Effect stopped.');
+  }
+
+  /**
+   * Applies the enabled effects to the provided source node.
+   * @param {AudioNode} sourceNode - The source node to apply effects to.
+   */
+  applyEffects(sourceNode) {
+      if (!sourceNode) return;
+      sourceNode.disconnect();
+      let lastNode = sourceNode;
+
+      if (this.effectsEnabled.gramophone) {
+          const { peakingFilter, lowShelfFilter } = this.effectStates.gramophone;
+          lastNode.connect(peakingFilter).connect(lowShelfFilter);
+          lastNode = lowShelfFilter;
+          console.log('Applying Gramophone Effect with settings:', {
+              peakingFilter: {
+                  frequency: peakingFilter.frequency.value,
+                  Q: peakingFilter.Q.value,
+                  gain: peakingFilter.gain.value,
+              },
+              lowShelfFilter: {
+                  frequency: lowShelfFilter.frequency.value,
+                  gain: lowShelfFilter.gain.value,
+              },
+          });
       }
 
-       /**
-         * Creates the gramophone effect nodes.
-         */
-       createGramophoneEffect() {
-            const { audioContext } = this;
+      if (this.effectsEnabled.echo) {
+          const { delayNode, feedbackGain, wetGain } = this.effectStates.echo;
+          lastNode.connect(delayNode).connect(feedbackGain).connect(delayNode);
+          lastNode.connect(wetGain);
+          lastNode = wetGain;
+          console.log('Applying Echo Effect with settings:', {
+              delayTime: delayNode.delayTime.value,
+              feedbackGain: feedbackGain.gain.value,
+              wetGain: wetGain.gain.value,
+          });
+      }
 
-            // Create a peaking filter to boost mid frequencies
-            this.gramophone.peakingFilter = audioContext.createBiquadFilter();
-            this.gramophone.peakingFilter.type = 'peaking';
-            this.gramophone.peakingFilter.frequency.value = 1000; // Boost mid frequencies
-            this.gramophone.peakingFilter.Q.value = 1; // Quality factor
-            this.gramophone.peakingFilter.gain.value = 6; // Gain in dB
+      lastNode.connect(this.audioContext.destination);
 
-            // Create a low-shelf filter to cut low end
-            this.gramophone.lowShelfFilter = audioContext.createBiquadFilter();
-            this.gramophone.lowShelfFilter.type = 'lowshelf';
-            this.gramophone.lowShelfFilter.frequency.value = 200;
-            this.gramophone.lowShelfFilter.gain.value = -6; // Reduced attenuation to prevent signal loss
+      if (this.effectsEnabled.echo) this.startEcho();
+      else this.stopEcho();
 
-            // Connect the filters in series: peakingFilter -> lowShelfFilter
-            this.gramophone.peakingFilter.connect(this.gramophone.lowShelfFilter);
+      console.log('Applied enabled effects to the audio chain.');
+  }
 
-            // Save the final node for application
-            this.effectNodes.gramophone = this.gramophone.lowShelfFilter;
+  /**
+   * Toggles a sound effect on or off.
+   * @param {string} effectName - 'crackle', 'gramophone', 'echo'
+   */
+  toggleEffect(effectName) {
+      if (!(effectName in this.effectsEnabled)) {
+          console.warn(`Effect "${effectName}" is not defined.`);
+          return;
+      }
 
-            console.log('Gramophone effect created with peaking and low-shelf filters.');
-        }
+      this.effectsEnabled[effectName] = !this.effectsEnabled[effectName];
+      console.log(`Toggling ${effectName} Effect. New State: ${this.effectsEnabled[effectName]}`);
 
-  
-    /**
-     * Creates the echo effect nodes.
-     */
-    createEchoEffect() {
-      // Create a delay node
-      this.echo.delayNode = this.audioContext.createDelay();
-      this.echo.delayNode.delayTime.value = 0.3; // 300ms delay
-  
-      // Create a feedback gain node
-      this.echo.feedbackGain = this.audioContext.createGain();
-      this.echo.feedbackGain.gain.value = 0.4; // Feedback gain
-  
-      // Create a wet gain node
-      this.echo.wetGain = this.audioContext.createGain();
-      this.echo.wetGain.gain.value = 0.5; // Wet signal volume
-  
-      // Connect delay to feedback gain
-      this.echo.delayNode.connect(this.echo.feedbackGain);
-      this.echo.feedbackGain.connect(this.echo.delayNode);
-  
-      // Connect delay node to wet gain
-      this.echo.delayNode.connect(this.echo.wetGain);
-  
-      // Save the wet gain node for application
-      this.effectNodes.echo = this.echo.wetGain;
-    }
+      switch (effectName) {
+          case 'crackle':
+              this.effectsEnabled.crackle ? this.startCrackle() : this.stopCrackle();
+              break;
+          case 'gramophone':
+              console.log(this.effectsEnabled.gramophone ? 'Gramophone effect enabled.' : 'Gramophone effect disabled.');
+              break;
+          case 'echo':
+              this.effectsEnabled.echo ? this.startEcho() : this.stopEcho();
+              break;
+      }
 
-      
-      
-         /**
-         * Applies the gramophone, echo, effects to the source node.
-         * @param {AudioNode} sourceNode - The source node to apply effects to.
-         */
-         applyEffects(sourceNode) {
-            if (!sourceNode) return;
-  
-            sourceNode.disconnect();
-            let lastNode = sourceNode;
-  
-            // Apply gramophone effect if enabled
-            if (this.effectsEnabled.gramophone) {
-              console.log('Applying Gramophone Effect with settings:', {
-                peakingFilter: {
-                  frequency: this.gramophone.peakingFilter.frequency.value,
-                  Q: this.gramophone.peakingFilter.Q.value,
-                  gain: this.gramophone.peakingFilter.gain.value,
-                },
-                lowShelfFilter: {
-                  frequency: this.gramophone.lowShelfFilter.frequency.value,
-                  gain: this.gramophone.lowShelfFilter.gain.value,
-                },
-              });
-              lastNode.connect(this.gramophone.peakingFilter);
-              lastNode = this.gramophone.lowShelfFilter;
-            }
-  
-            // Apply echo effect if enabled
-            if (this.effectsEnabled.echo) {
-              console.log('Applying Echo Effect with settings:', {
-                delayTime: this.echo.delayNode.delayTime.value,
-                feedbackGain: this.echo.feedbackGain.gain.value,
-                wetGain: this.echo.wetGain.gain.value,
-              });
-              lastNode.connect(this.echo.delayNode);
-              lastNode = this.echo.wetGain;
-            }
-  
-         
-  
-            // Connect the last node to the destination
-            lastNode.connect(this.audioContext.destination);
-  
-            // Start or stop echo effect based on its enabled state
-            if (this.effectsEnabled.echo) {
-              this.startEcho();
-            } else {
-              this.stopEcho();
-            }
-  
-            console.log('Applied enabled effects to the audio chain.');
-          }
-  
-          /**
-           * Toggles a sound effect on or off.
-           * @param {string} effectName - 'crackle', 'gramophone', 'echo'
-           */
-          toggleEffect(effectName) {
-            if (!(effectName in this.effectsEnabled)) {
-              console.warn(`Effect "${effectName}" is not defined.`);
-              return;
-            }
-  
-            this.effectsEnabled[effectName] = !this.effectsEnabled[effectName];
-            console.log(`Toggling ${effectName} Effect. New State: ${this.effectsEnabled[effectName]}`);
-  
-            switch (effectName) {
-              case 'crackle':
-                this.effectsEnabled.crackle ? this.startCrackle() : this.stopCrackle();
-                break;
-              case 'gramophone':
-                // Reinitialize the gramophone effect to ensure proper connections
-                if (this.effectsEnabled.gramophone) {
-                  console.log('Gramophone effect enabled.');
-                } else {
-                  console.log('Gramophone effect disabled.');
-                }
-                break;
-              case 'echo':
-                this.effectsEnabled.echo ? this.startEcho() : this.stopEcho();
-                break;
-           
-              default:
-                break;
-            }
-  
-            // After toggling, reapply effects to update the audio chain
-            // Note: You need to provide the current source node when calling applyEffects
-            // For example, if you have a method to set the current source, use it here
-            // Example:
-            // if (this.currentSource) {
-            //   this.applyEffects(this.currentSource);
-            // }
-  
-            console.log(`Effect "${effectName}" has been toggled.`);
-          }
-  
-       
-  
-          /**
-           * Starts the echo effect.
-           */
-          startEcho() {
-            if (this.echo.started) return;
-  
-            // Connect the echo wet gain to the destination
-            this.echo.wetGain.connect(this.audioContext.destination);
-            this.echo.started = true;
-  
-            console.log('Echo Effect started.');
-          }
-  
-          /**
-           * Stops the echo effect.
-           */
-          stopEcho() {
-            if (!this.echo.started) return;
-  
-            // Disconnect the echo wet gain from the destination
-            this.echo.wetGain.disconnect(this.audioContext.destination);
-            this.echo.started = false;
-  
-            console.log('Echo Effect stopped.');
-          }
-      
-        /**
-         * Disconnects all effect nodes from the audio chain.
-         */
-        disconnectEffects() {
-            // Disconnect gramophone effect
-            if (this.gramophone.peakingFilter && this.gramophone.lowShelfFilter) {
-              this.gramophone.peakingFilter.disconnect();
-              this.gramophone.lowShelfFilter.disconnect();
-            }
-  
-            // Disconnect echo effect
-            if (this.echo.wetGain) {
-              this.echo.wetGain.disconnect();
-            }
-  
-            // Disconnect crackle effect
-            if (this.crackle.gain) {
-              this.crackle.gain.disconnect();
-            }
-  
-  
-            console.log('All effects have been disconnected from the audio chain.');
-          }
+      console.log(`Effect "${effectName}" has been toggled.`);
+  }
 
-        }
+  /**
+   * Disconnects all effect nodes from the audio chain.
+   */
+  disconnectEffects() {
+      const { peakingFilter, lowShelfFilter } = this.effectStates.gramophone;
+      peakingFilter?.disconnect();
+      lowShelfFilter?.disconnect();
+
+      const { wetGain } = this.effectStates.echo;
+      wetGain?.disconnect();
+
+      const { gain } = this.effectStates.crackle;
+      gain?.disconnect();
+
+      console.log('All effects have been disconnected from the audio chain.');
+  }
+}
