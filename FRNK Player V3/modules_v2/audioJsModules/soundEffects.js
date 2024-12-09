@@ -361,4 +361,37 @@ export class SoundEffects {
         this.audioContext.close();
         console.log('SoundEffects: Audio context closed and resources cleaned up.');
     }
+
+
+    setCrackleVolume(volume) {
+        if (this.effectStates.crackle && this.effectStates.crackle.gain) {
+            this.effectStates.crackle.gain.gain.value = volume;
+            console.log(`SoundEffects: Crackle volume set to ${volume}.`);
+        } else {
+            console.error('SoundEffects: Crackle gain node not initialized.');
+        }
+    }
+
+    setGramophoneVolume(volume) {
+        if (this.effectStates.gramophone && this.effectStates.gramophone.gainNode) {
+            this.effectStates.gramophone.gainNode.gain.value = volume;
+            console.log(`SoundEffects: Gramophone volume set to ${volume}.`);
+        } else {
+            console.error('SoundEffects: Gramophone gain node not initialized.');
+        }
+    }
+
+    setEchoVolume(volume) {
+        if (this.effectStates.echo && this.effectStates.echo.wetGain) {
+            this.effectStates.echo.wetGain.gain.value = volume;
+            console.log(`SoundEffects: Echo volume set to ${volume}.`);
+        } else {
+            console.error('SoundEffects: Echo wetGain node not initialized.');
+        }
+    }
+
+
+
+
+
 }
