@@ -1,4 +1,4 @@
-// TimerDisplay.js
+// modules_v2/uiModules/TimerDisplay.js
 
 export class TimerDisplay {
     constructor(timerElement, audioPlayer) {

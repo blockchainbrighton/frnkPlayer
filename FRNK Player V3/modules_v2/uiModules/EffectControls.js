@@ -1,4 +1,4 @@
-// EffectControls.js
+// modules_v2/uiModules/EffectControls.js
 
 export class EffectControls {
   constructor(elements, audioPlayer) {

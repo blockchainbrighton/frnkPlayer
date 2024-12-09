@@ -1,4 +1,4 @@
-// LoadingScreen.js
+// modules_v2/uiModules/LoadingScreen.js
 
 export class LoadingScreen {
     constructor() {

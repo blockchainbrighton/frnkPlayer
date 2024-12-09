@@ -1,4 +1,4 @@
-// TransportControls.js
+// modules_v2/uiModules/TransportControls.js
 
 export class TransportControls {
     constructor(elements, audioPlayer, animationManager, timerDisplay) {

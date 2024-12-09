@@ -298,6 +298,9 @@
 <body>
   <div id="mainContainer">
     <div id="container">
+
+
+      
       <div id="tapeDeckContainer">
         <img id="tapeDeckImage" src="./assets/tapeDeck.JPG" alt="Tape Deck">
         <canvas id="spoolCanvas"></canvas>
@@ -327,6 +330,19 @@
         </select>
         <div id="timerDisplay">00:00 / 02:36</div>
       </div>
+               <!-- Add Volume Controls -->
+               <div class="volume-controls-container">
+                <label for="masterVolumeSlider">Master Volume</label>
+                <input
+                  type="range"
+                  id="masterVolumeSlider"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="1"
+                  aria-label="Master Volume Slider"
+                />
+              </div>
     </div>
   </div>
 

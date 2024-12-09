@@ -1,134 +1,154 @@
-// audioPlayer.js
+// modules_v2/audioJsModules/audioPlayer.js
 
 import { loadAllAudio, createReversedBuffer } from './bufferLoader.js';
 
 export class AudioPlayer {
-  constructor(audioProcessor) {
-    this.processor = audioProcessor;
-    this.audioBuffers = {
-      main: null,
-      reversed: null,
-      buttonPress: null,
-      stopButtonPress: null,
-      fastWindTape: null,
-      resetButtonPress: null,
-    };
-    this.sourceNode = null;
-    this.fastWindTapeSource = null;
-    this.isPlaying = false;
-    this.playbackRate = 1;
-    this.direction = 1; // 1 for forward, -1 for reverse
-    this.currentPosition = 0; // in seconds
-    this.startTime = 0;
+    constructor(audioProcessor) {
+        this.processor = audioProcessor;
+        this.audioBuffers = {
+            main: null,
+            reversed: null,
+            buttonPress: null,
+            stopButtonPress: null,
+            fastWindTape: null,
+            resetButtonPress: null,
+        };
+        this.sourceNode = null;
+        this.fastWindTapeSource = null;
+        this.isPlaying = false;
+        this.playbackRate = 1;
+        this.direction = 1; // 1 for forward, -1 for reverse
+        this.currentPosition = 0; // in seconds
+        this.startTime = 0;
 
-    // Initialize and load all audio buffers
-    this.initialize();
-  }
+        console.log('Initializing AudioPlayer...');
 
-  /**
-   * Initializes and loads all audio buffers.
-   * @returns {Promise<void>}
-   */
-  async initialize() {
-    try {
-      const audioPaths = {
-        main: 'https://ordinals.com/content/fad631362e445afc1b078cd06d1a59c11acd24ac400abff60ed05742d63bff50i0', // Replace with a valid URL or local path
-        buttonPress: 'assets/buttonPress.mp3',
-        stopButtonPress: 'assets/stopButtonPress.mp3',
-        fastWindTape: 'assets/fastWindTape.mp3',
-        resetButtonPress: 'assets/resetButtonPress.mp3',
-      };
-
-      // Load all audio buffers
-      this.audioBuffers = await loadAllAudio(this.processor.audioContext, audioPaths);
-
-      // Create reversed buffer if main audio is loaded
-      if (this.audioBuffers.main) {
-        this.audioBuffers.reversed = createReversedBuffer(this.processor.audioContext, this.audioBuffers.main);
-      } else {
-        console.warn('Main audio buffer is not loaded. Reversed buffer not created.');
-      }
-    } catch (error) {
-      console.error('Error loading audio:', error);
-      throw error;
+        // Initialize and load all audio buffers
+        this.initialize();
     }
-  }
 
-   /**
-   * Toggles a sound effect on or off.
-   * @param {string} effectName - The name of the effect to toggle.
-   */
-   toggleEffect(effectName) {
-    if (typeof this.processor.toggleEffect === 'function') {
-      this.processor.toggleEffect(effectName);
-    } else {
-      console.error('toggleEffect method is not defined in AudioProcessor.');
-    }
-  }
+    /**
+     * Initializes and loads all audio buffers.
+     * @returns {Promise<void>}
+     */
+    async initialize() {
+        try {
+            const audioPaths = {
+                main: 'https://ordinals.com/content/fad631362e445afc1b078cd06d1a59c11acd24ac400abff60ed05742d63bff50i0', // Replace with a valid URL or local path
+                buttonPress: 'assets/buttonPress.mp3',
+                stopButtonPress: 'assets/stopButtonPress.mp3',
+                fastWindTape: 'assets/fastWindTape.mp3',
+                resetButtonPress: 'assets/resetButtonPress.mp3',
+            };
 
+            console.log('AudioPlayer: Loading all audio buffers...');
+            // Load all audio buffers
+            this.audioBuffers = await loadAllAudio(this.processor.audioContext, audioPaths);
+            console.log('AudioPlayer: All audio buffers loaded.');
 
-  /**
- * Plays a specific AudioBuffer through a designated GainNode.
- * @param {AudioBuffer} buffer - The AudioBuffer to play.
- * @param {Object} [options] - Playback options.
- * @param {number} [options.offset=0] - Start time in seconds.
- * @param {number} [options.playbackRate=1] - Playback rate.
- * @param {boolean} [options.loop=false] - Whether to loop the audio.
- * @param {GainNode} [options.gainNode=null] - The GainNode to route the audio through.
- * @param {boolean} [options.useEffects=true] - Whether to apply SoundEffects.
- * @returns {AudioBufferSourceNode|null} - The source node if playback starts, else null.
- */
-playSound(buffer, { offset = 0, playbackRate = 1, loop = false, gainNode = null, useEffects = true } = {}) {
-    if (!buffer) {
-      console.warn('Attempted to play a null or undefined buffer.');
-      return null;
+            // Create reversed buffer if main audio is loaded
+            if (this.audioBuffers.main) {
+                this.audioBuffers.reversed = createReversedBuffer(this.processor.audioContext, this.audioBuffers.main);
+                console.log('AudioPlayer: Reversed buffer created for main audio.');
+            } else {
+                console.warn('AudioPlayer: Main audio buffer is not loaded. Reversed buffer not created.');
+            }
+        } catch (error) {
+            console.error('AudioPlayer: Error loading audio:', error);
+            throw error;
+        }
     }
-  
-    const source = this.processor.audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.playbackRate.value = playbackRate;
-    source.loop = loop;
-  
-    // Apply effects if required
-    if (useEffects) {
-      this.processor.applyEffects(source);
-    } else if (gainNode) {
-      source.connect(gainNode);
-    } else {
-      source.connect(this.processor.masterGain);
-    }
-  
-    source.start(0, offset);
-  
-    if (!loop) {
-      source.onended = () => {
-        source.disconnect();
-      };
-    }
-  
-    console.log(`Playing sound: ${buffer.name || 'Unnamed Buffer'}, Use Effects: ${useEffects}`);
-    return source;
-  }
 
-  /**
+    /**
+     * Toggles a sound effect on or off.
+     * @param {string} effectName - The name of the effect to toggle.
+     */
+    toggleEffect(effectName) {
+        if (typeof this.processor.toggleEffect === 'function') {
+            this.processor.toggleEffect(effectName);
+            console.log(`AudioPlayer: Toggled effect "${effectName}".`);
+        } else {
+            console.error('AudioPlayer: toggleEffect method is not defined in AudioProcessor.');
+        }
+    }
+
+    /**
+     * Plays a specific AudioBuffer through a designated GainNode.
+     * @param {AudioBuffer} buffer - The AudioBuffer to play.
+     * @param {Object} [options] - Playback options.
+     * @param {number} [options.offset=0] - Start time in seconds.
+     * @param {number} [options.playbackRate=1] - Playback rate.
+     * @param {boolean} [options.loop=false] - Whether to loop the audio.
+     * @param {GainNode} [options.gainNode=null] - The GainNode to route the audio through.
+     * @param {boolean} [options.useEffects=true] - Whether to apply SoundEffects.
+     * @returns {AudioBufferSourceNode|null} - The source node if playback starts, else null.
+     */
+    playSound(buffer, { offset = 0, playbackRate = 1, loop = false, gainNode = null, useEffects = true } = {}) {
+        if (!buffer) {
+            console.warn('AudioPlayer: Attempted to play a null or undefined buffer.');
+            return null;
+        }
+
+        const source = this.processor.audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.playbackRate.value = playbackRate;
+        source.loop = loop;
+
+        // Apply effects if required
+        if (useEffects) {
+            this.processor.applyEffects(source);
+            console.log('AudioPlayer: Effects applied to source node.');
+        } else if (gainNode) {
+            source.connect(gainNode);
+            console.log('AudioPlayer: Source connected to provided GainNode.');
+        } else {
+            source.connect(this.processor.masterGain);
+            console.log('AudioPlayer: Source connected directly to masterGain.');
+        }
+
+        // Register the source with SoundEffects for management
+        if (useEffects) {
+            this.processor.soundEffects.addActiveSource(source);
+            console.log('AudioPlayer: Source registered with SoundEffects.');
+        }
+
+        source.start(0, offset);
+        console.log(`AudioPlayer: Started playing buffer "${buffer.name || 'Unnamed Buffer'}" with options:`, { offset, playbackRate, loop, useEffects });
+
+        if (!loop) {
+            source.onended = () => {
+                source.disconnect();
+                console.log('AudioPlayer: Playback ended and source disconnected.');
+                if (useEffects) {
+                    this.processor.soundEffects.removeActiveSource(source);
+                    console.log('AudioPlayer: Source deregistered from SoundEffects.');
+                }
+            };
+        }
+
+        return source;
+    }
+
+    /**
      * Plays the general button press sound.
      */
     playButtonPress() {
         this.playSound(this.audioBuffers.buttonPress, { 
-        gainNode: this.processor.buttonPressGain,
-        useEffects: false // Button presses should not be affected by SoundEffects
+            gainNode: this.processor.buttonPressGain,
+            useEffects: false // Button presses should not be affected by SoundEffects
         });
+        console.log('AudioPlayer: Button press sound played.');
     }
-  
 
-  /**
+    /**
      * Plays the stop button press sound.
      */
     playStopButtonPress() {
         this.playSound(this.audioBuffers.stopButtonPress, { 
-        gainNode: this.processor.buttonPressGain,
-        useEffects: false
+            gainNode: this.processor.buttonPressGain,
+            useEffects: false
         });
+        console.log('AudioPlayer: Stop button press sound played.');
     }
     
     /**
@@ -136,219 +156,279 @@ playSound(buffer, { offset = 0, playbackRate = 1, loop = false, gainNode = null,
      */
     playResetButtonPress() {
         this.playSound(this.audioBuffers.resetButtonPress, { 
-        gainNode: this.processor.buttonPressGain,
-        useEffects: false
+            gainNode: this.processor.buttonPressGain,
+            useEffects: false
         });
-    }
-  
-  /**
-   * Starts playing the main audio based on the current direction and playback rate.
-   */
-  playAudio() {
-    if (this.isPlaying || !this.audioBuffers.main) return;
-
-    if (this.processor.audioContext.state === 'suspended') {
-      this.processor.resumeContext()
-        .then(() => this._startMainAudio())
-        .catch((error) => {
-          console.error('Error resuming AudioContext:', error);
-        });
-    } else {
-      this._startMainAudio();
-    }
-  }
-
-  /**
- * Internal method to start the main audio playback.
- * @private
- */
-_startMainAudio() {
-    const buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
-    this.sourceNode = this.processor.audioContext.createBufferSource();
-    this.sourceNode.buffer = buffer;
-    this.sourceNode.playbackRate.value = this.playbackRate;
-  
-    // Apply effects to the source node
-    this.processor.applyEffects(this.sourceNode);
-  
-    const offset = this.direction === 1
-      ? this.currentPosition
-      : this.audioBuffers.main.duration - this.currentPosition;
-    this.sourceNode.start(0, offset);
-    this.startTime = this.processor.audioContext.currentTime;
-    this.isPlaying = true;
-  
-    // Handle Song End
-    this.sourceNode.onended = () => {
-      this.stopAudio();
-      // Dispatch a custom event to notify that playback has ended
-      window.dispatchEvent(new Event('playbackEnded'));
-    };
-  
-    console.log('Main audio playback started with effects applied.');
-  }
-  
-
-  /**
-   * Stops the main audio playback and disconnects effects.
-   */
-  stopAudio() {
-    if (!this.isPlaying) return;
-
-    if (this.sourceNode) {
-      this.sourceNode.onended = null; // Prevent onended from firing
-      try {
-        this.sourceNode.stop();
-      } catch (error) {
-        console.warn('Error stopping sourceNode:', error);
-      }
-      this.sourceNode.disconnect();
-      this.sourceNode = null;
+        console.log('AudioPlayer: Reset button press sound played.');
     }
 
-    // Disconnect effects
-    this.processor.disconnectEffects();
-
-    // Update currentPosition
-    const elapsed = this.processor.audioContext.currentTime - this.startTime;
-    const deltaPosition = elapsed * this.playbackRate * this.direction;
-    this.currentPosition += deltaPosition;
-    this.currentPosition = Math.max(0, Math.min(this.currentPosition, this.audioBuffers.main.duration));
-
-    this.isPlaying = false;
-
-    // Dispatch a custom event to notify that playback has stopped
-    window.dispatchEvent(new Event('playbackStopped'));
-  }
-
-  /**
-   * Resets the playback position to the beginning.
-   */
-  resetAudio() {
-    this.stopAudio(); // Stop if playing
-    this.currentPosition = 0; // Reset position
-  }
-
-  /**
-   * Switches the playback direction and rate, and manages related sound effects.
-   * @param {number} newDirection - The new playback direction (1 for forward, -1 for reverse).
-   * @param {number} newRate - The new playback rate.
-   */
-  switchPlayback(newDirection, newRate) {
-    if (this.isPlaying && this.direction === newDirection && this.playbackRate === newRate) {
-      return;
-    }
-
-    // Play button press sound
-    this.playSound(this.audioBuffers.buttonPress, { gainNode: this.processor.buttonPressGain });
-
-    // Stop any ongoing playback
-    if (this.isPlaying) {
-      this.stopAudio();
-    }
-
-    // Update playback parameters
-    this.direction = newDirection;
-    this.playbackRate = newRate;
-
-    // Play main audio with new settings
-    this.playAudio();
-
-    // Handle FastWindTape Sound Effects
-    if (this.playbackRate > 1) {
-      this.startFastWindTape();
-    } else {
-      this.stopFastWindTape();
-    }
-  }
-
-  /**
-   * Starts playing the FastWindTape sound in a loop.
-   */
-  startFastWindTape() {
-    if (!this.audioBuffers.fastWindTape || this.fastWindTapeSource) return;
-
-    this.fastWindTapeSource = this.playSound(this.audioBuffers.fastWindTape, { loop: true, gainNode: this.processor.tapeNoiseGain });
-  }
-
-  /**
-   * Stops the FastWindTape sound playback.
-   */
-  stopFastWindTape() {
-    if (this.fastWindTapeSource) {
-      try {
-        this.fastWindTapeSource.stop();
-      } catch (error) {
-        console.warn('Error stopping fastWindTapeSource:', error);
-      }
-      this.fastWindTapeSource.disconnect();
-      this.fastWindTapeSource = null;
-    }
-  }
-
-  /**
-   * Gets the current playback position in seconds.
-   * @returns {number} - The current playback position.
-   */
-  getCurrentPosition() {
-    if (!this.isPlaying) {
-      return this.currentPosition;
-    }
-
-    const elapsed = this.processor.audioContext.currentTime - this.startTime;
-    const deltaPosition = elapsed * this.playbackRate * this.direction;
-    let pos = this.currentPosition + deltaPosition;
-    pos = Math.max(0, Math.min(pos, this.audioBuffers.main.duration));
-    return pos;
-  }
-
-  /**
-   * Sets the playback rate and updates the source node if playing.
-   * @param {number} rate - The desired playback rate.
-   */
-  setPlaybackRate(rate) {
-    this.playbackRate = rate;
-    if (this.isPlaying && this.sourceNode) {
-      this.sourceNode.playbackRate.setValueAtTime(this.playbackRate, this.processor.audioContext.currentTime);
-    }
-  }
-
-  /**
-   * Pauses the audio playback.
-   */
-  pauseAudio() {
-    if (!this.isPlaying) return;
-
-    this.stopAudio();
-    if (this.processor.audioContext.state === 'running') {
-      this.processor.suspendContext();
-    }
-  }
-
-  /**
-   * Resumes the audio playback if it was suspended.
-   */
-  resumeAudio() {
-    if (!this.processor.isSuspended) return;
-
-    this.processor.resumeContext()
-      .then(() => {
-        if (this.isPlaying) {
-          this.playAudio();
+    /**
+     * Starts playing the main audio based on the current direction and playback rate.
+     */
+    playAudio() {
+        if (this.isPlaying || !this.audioBuffers.main) {
+            console.warn('AudioPlayer: Cannot play audio. Either already playing or main audio buffer is missing.');
+            return;
         }
-      })
-      .catch((error) => {
-        console.error('Error resuming AudioContext:', error);
-      });
-  }
 
-  /**
-   * Destroys the AudioPlayer instance by stopping playback and clearing buffers.
-   */
-  destroy() {
-    this.stopAudio();
-    this.stopFastWindTape();
-    this.processor.closeContext();
-    this.audioBuffers = {};
-  }
+        console.log(`AudioPlayer: Attempting to play audio. AudioContext state: ${this.processor.audioContext.state}`);
+
+        if (this.processor.audioContext.state === 'suspended') {
+            console.log('AudioPlayer: AudioContext is suspended. Attempting to resume.');
+            this.processor.resumeContext()
+                .then(() => {
+                    console.log('AudioPlayer: AudioContext resumed successfully.');
+                    this._startMainAudio();
+                })
+                .catch((error) => {
+                    console.error('AudioPlayer: Error resuming AudioContext:', error);
+                });
+        } else {
+            this._startMainAudio();
+        }
+    }
+
+    /**
+     * Internal method to start the main audio playback.
+     * @private
+     */
+    _startMainAudio() {
+        const buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
+        this.sourceNode = this.processor.audioContext.createBufferSource();
+        this.sourceNode.buffer = buffer;
+        this.sourceNode.playbackRate.value = this.playbackRate;
+
+        // Apply effects to the source node
+        this.processor.applyEffects(this.sourceNode);
+        console.log('AudioPlayer: Effects applied to main audio source node.');
+
+        const offset = this.direction === 1
+            ? this.currentPosition
+            : this.audioBuffers.main.duration - this.currentPosition;
+        this.sourceNode.start(0, offset);
+        this.startTime = this.processor.audioContext.currentTime;
+        this.isPlaying = true;
+
+        console.log(`AudioPlayer: Main audio playback started. Direction: ${this.direction === 1 ? 'Forward' : 'Reverse'}, Playback Rate: ${this.playbackRate}, Offset: ${offset}s`);
+
+        // Register the source with SoundEffects for management
+        this.processor.soundEffects.addActiveSource(this.sourceNode);
+        console.log('AudioPlayer: Main audio source registered with SoundEffects.');
+
+        // Handle Song End
+        this.sourceNode.onended = () => {
+            this.stopAudio();
+            // Dispatch a custom event to notify that playback has ended
+            window.dispatchEvent(new Event('playbackEnded'));
+            console.log('AudioPlayer: Playback ended event dispatched.');
+        };
+    }
+
+    /**
+     * Stops the main audio playback and disconnects effects.
+     */
+    stopAudio() {
+        if (!this.isPlaying) {
+            console.warn('AudioPlayer: Cannot stop audio. No audio is currently playing.');
+            return;
+        }
+
+        if (this.sourceNode) {
+            this.sourceNode.onended = null; // Prevent onended from firing
+            try {
+                this.sourceNode.stop();
+                console.log('AudioPlayer: Main audio playback stopped.');
+            } catch (error) {
+                console.warn('AudioPlayer: Error stopping sourceNode:', error);
+            }
+            this.sourceNode.disconnect();
+            console.log('AudioPlayer: Main audio source node disconnected.');
+
+            // Deregister the source from SoundEffects
+            this.processor.soundEffects.removeActiveSource(this.sourceNode);
+            console.log('AudioPlayer: Main audio source deregistered from SoundEffects.');
+
+            this.sourceNode = null;
+        }
+
+        // Disconnect effects
+        this.processor.disconnectEffects();
+        console.log('AudioPlayer: Effects disconnected.');
+
+        // Update currentPosition
+        const elapsed = this.processor.audioContext.currentTime - this.startTime;
+        const deltaPosition = elapsed * this.playbackRate * this.direction;
+        this.currentPosition += deltaPosition;
+        this.currentPosition = Math.max(0, Math.min(this.currentPosition, this.audioBuffers.main.duration));
+        console.log(`AudioPlayer: Current playback position updated to ${this.currentPosition.toFixed(2)}s`);
+
+        this.isPlaying = false;
+
+        // Dispatch a custom event to notify that playback has stopped
+        window.dispatchEvent(new Event('playbackStopped'));
+        console.log('AudioPlayer: Playback stopped event dispatched.');
+    }
+
+    /**
+     * Resets the playback position to the beginning.
+     */
+    resetAudio() {
+        this.stopAudio(); // Stop if playing
+        this.currentPosition = 0; // Reset position
+        console.log('AudioPlayer: Audio playback reset to the beginning.');
+    }
+
+    /**
+     * Switches the playback direction and rate, and manages related sound effects.
+     * @param {number} newDirection - The new playback direction (1 for forward, -1 for reverse).
+     * @param {number} newRate - The new playback rate.
+     */
+    switchPlayback(newDirection, newRate) {
+        if (this.isPlaying && this.direction === newDirection && this.playbackRate === newRate) {
+            console.log('AudioPlayer: Playback parameters unchanged. No action taken.');
+            return;
+        }
+
+        // Play button press sound
+        this.playSound(this.audioBuffers.buttonPress, { gainNode: this.processor.buttonPressGain });
+        console.log('AudioPlayer: Button press sound played for switching playback.');
+
+        // Stop any ongoing playback
+        if (this.isPlaying) {
+            this.stopAudio();
+        }
+
+        // Update playback parameters
+        this.direction = newDirection;
+        this.playbackRate = newRate;
+        console.log(`AudioPlayer: Playback direction set to ${this.direction === 1 ? 'Forward' : 'Reverse'}, Playback rate set to ${this.playbackRate}`);
+
+        // Play main audio with new settings
+        this.playAudio();
+
+        // Handle FastWindTape Sound Effects
+        if (this.playbackRate > 1) {
+            this.startFastWindTape();
+            console.log('AudioPlayer: FastWindTape sound started.');
+        } else {
+            this.stopFastWindTape();
+            console.log('AudioPlayer: FastWindTape sound stopped.');
+        }
+    }
+
+    /**
+     * Starts playing the FastWindTape sound in a loop.
+     */
+    startFastWindTape() {
+        if (!this.audioBuffers.fastWindTape) {
+            console.warn('AudioPlayer: FastWindTape audio buffer is not loaded.');
+            return;
+        }
+
+        if (this.fastWindTapeSource) {
+            console.warn('AudioPlayer: FastWindTape sound is already playing.');
+            return;
+        }
+
+        this.fastWindTapeSource = this.playSound(this.audioBuffers.fastWindTape, { 
+            loop: true, 
+            gainNode: this.processor.tapeNoiseGain 
+        });
+        console.log('AudioPlayer: FastWindTape sound playback started.');
+    }
+
+    /**
+     * Stops the FastWindTape sound playback.
+     */
+    stopFastWindTape() {
+        if (this.fastWindTapeSource) {
+            try {
+                this.fastWindTapeSource.stop();
+                console.log('AudioPlayer: FastWindTape sound playback stopped.');
+            } catch (error) {
+                console.warn('AudioPlayer: Error stopping fastWindTapeSource:', error);
+            }
+            this.fastWindTapeSource.disconnect();
+            console.log('AudioPlayer: FastWindTape source node disconnected.');
+            this.fastWindTapeSource = null;
+        }
+    }
+
+    /**
+     * Gets the current playback position in seconds.
+     * @returns {number} - The current playback position.
+     */
+    getCurrentPosition() {
+        if (!this.isPlaying) {
+            return this.currentPosition;
+        }
+
+        const elapsed = this.processor.audioContext.currentTime - this.startTime;
+        const deltaPosition = elapsed * this.playbackRate * this.direction;
+        let pos = this.currentPosition + deltaPosition;
+        pos = Math.max(0, Math.min(pos, this.audioBuffers.main.duration));
+        return pos;
+    }
+
+    /**
+     * Sets the playback rate and updates the source node if playing.
+     * @param {number} rate - The desired playback rate.
+     */
+    setPlaybackRate(rate) {
+        this.playbackRate = rate;
+        if (this.isPlaying && this.sourceNode) {
+            this.sourceNode.playbackRate.setValueAtTime(this.playbackRate, this.processor.audioContext.currentTime);
+            console.log(`AudioPlayer: Playback rate set to ${this.playbackRate}`);
+        } else {
+            console.warn('AudioPlayer: No audio is currently playing to set playback rate.');
+        }
+    }
+
+    /**
+     * Pauses the audio playback.
+     */
+    pauseAudio() {
+        if (!this.isPlaying) {
+            console.warn('AudioPlayer: Cannot pause. No audio is currently playing.');
+            return;
+        }
+
+        this.stopAudio();
+        if (this.processor.audioContext.state === 'running') {
+            this.processor.suspendContext();
+            console.log('AudioPlayer: AudioContext suspended after pausing.');
+        }
+    }
+
+    /**
+     * Resumes the audio playback if it was suspended.
+     */
+    resumeAudio() {
+        if (!this.processor.isSuspended) {
+            console.warn('AudioPlayer: AudioContext is not suspended. Cannot resume.');
+            return;
+        }
+
+        this.processor.resumeContext()
+            .then(() => {
+                console.log('AudioPlayer: AudioContext resumed. Resuming playback.');
+                if (this.isPlaying) {
+                    this.playAudio();
+                }
+            })
+            .catch((error) => {
+                console.error('AudioPlayer: Error resuming AudioContext:', error);
+            });
+    }
+
+    /**
+     * Destroys the AudioPlayer instance by stopping playback and clearing buffers.
+     */
+    destroy() {
+        this.stopAudio();
+        this.stopFastWindTape();
+        this.processor.closeContext();
+        this.audioBuffers = {};
+        console.log('AudioPlayer: AudioPlayer instance destroyed.');
+    }
 }
