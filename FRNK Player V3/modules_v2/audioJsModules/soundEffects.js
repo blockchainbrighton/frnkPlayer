@@ -10,9 +10,12 @@ export class SoundEffects {
       };
       this.effectStates = {
           crackle: { gain: null, source: null, started: false },
-          gramophone: { peakingFilter: null, lowShelfFilter: null },
+          gramophone: { peakingFilter: null, lowShelfFilter: null, highShelfFilter: null, gainNode: null },
           echo: { delayNode: null, feedbackGain: null, wetGain: null, started: false },
       };
+      this.activeSources = new Set(); // Track active sources
+      this.masterGain = this.createGainNode(1); // Initialize master gain
+      this.masterGain.connect(this.audioContext.destination); // Connect master gain to destination
       this.initializeEffects();
   }
 
@@ -81,10 +84,11 @@ export class SoundEffects {
       source.buffer = this.createNoiseBuffer();
       source.loop = true;
 
-      const bandpass = this.createFilter('bandpass', { frequency: 1000 });
-      const gain = this.createGainNode(0.1);
+      const bandpass = this.createFilter('bandpass', { frequency: 1000, Q: 1 });
+      const gain = this.createGainNode(0.2); // Increased gain for more audible crackle
 
       source.connect(bandpass).connect(gain);
+      gain.connect(this.masterGain); // Connect crackle to masterGain
       this.effectStates.crackle = { gain, source, started: false };
   }
 
@@ -99,7 +103,6 @@ export class SoundEffects {
       } catch (error) {
           console.warn('Crackle source already started:', error);
       }
-      crackle.gain.connect(this.audioContext.destination);
       crackle.started = true;
       console.log('Crackle Effect started.');
   }
@@ -110,12 +113,12 @@ export class SoundEffects {
   stopCrackle() {
       const crackle = this.effectStates.crackle;
       if (!crackle.started) return;
-      crackle.gain.disconnect();
       try {
           crackle.source.stop();
       } catch (error) {
           console.warn('Error stopping crackle source:', error);
       }
+      crackle.gain.disconnect();
       this.initCrackle();
       crackle.started = false;
       console.log('Crackle Effect stopped.');
@@ -125,18 +128,36 @@ export class SoundEffects {
    * Initializes the Gramophone Effect.
    */
   initGramophone() {
+      // Peaking Filter: Enhanced mid frequencies
       const peaking = this.createFilter('peaking', {
-          frequency: 1000,
-          Q: 1,
-          gain: 6,
+          frequency: 800, // Lowered frequency for better mid emphasis
+          Q: 1.5,          // Increased Q for a narrower peak
+          gain: 12,        // Increased gain for more pronounced effect
       });
+
+      // Low Shelf Filter: Deeper bass cut
       const lowShelf = this.createFilter('lowshelf', {
-          frequency: 200,
-          gain: -6,
+          frequency: 150, // Lowered frequency to cut more bass
+          gain: -12,      // Increased cut for vintage feel
       });
-      peaking.connect(lowShelf);
-      this.effectStates.gramophone = { peakingFilter: peaking, lowShelfFilter: lowShelf };
-      console.log('Gramophone effect created with peaking and low-shelf filters.');
+
+      // High Shelf Filter: Additional high frequency reduction
+      const highShelf = this.createFilter('highshelf', {
+          frequency: 3000, // Frequency to start high cut
+          gain: -9,         // High frequencies cut
+      });
+
+      // Gain Node: Amplify the processed signal
+      const gainNode = this.createGainNode(1.5); // Increased gain to boost effect
+
+      // Connect filters in series
+      peaking.connect(lowShelf).connect(highShelf).connect(gainNode);
+
+      // Connect gramophone effect to masterGain
+      gainNode.connect(this.masterGain);
+
+      this.effectStates.gramophone = { peakingFilter: peaking, lowShelfFilter: lowShelf, highShelfFilter: highShelf, gainNode };
+      console.log('Gramophone effect initialized with enhanced filters.');
   }
 
   /**
@@ -151,6 +172,7 @@ export class SoundEffects {
 
       delay.connect(feedback).connect(delay);
       delay.connect(wet);
+      wet.connect(this.masterGain); // Connect echo to masterGain
       this.effectStates.echo = { delayNode: delay, feedbackGain: feedback, wetGain: wet, started: false };
   }
 
@@ -160,7 +182,6 @@ export class SoundEffects {
   startEcho() {
       const echo = this.effectStates.echo;
       if (echo.started) return;
-      echo.wetGain.connect(this.audioContext.destination);
       echo.started = true;
       console.log('Echo Effect started.');
   }
@@ -171,7 +192,6 @@ export class SoundEffects {
   stopEcho() {
       const echo = this.effectStates.echo;
       if (!echo.started) return;
-      echo.wetGain.disconnect();
       echo.started = false;
       console.log('Echo Effect stopped.');
   }
@@ -186,10 +206,10 @@ export class SoundEffects {
       let lastNode = sourceNode;
 
       if (this.effectsEnabled.gramophone) {
-          const { peakingFilter, lowShelfFilter } = this.effectStates.gramophone;
-          lastNode.connect(peakingFilter).connect(lowShelfFilter);
-          lastNode = lowShelfFilter;
-          console.log('Applying Gramophone Effect with settings:', {
+          const { peakingFilter, lowShelfFilter, highShelfFilter, gainNode } = this.effectStates.gramophone;
+          lastNode.connect(peakingFilter).connect(lowShelfFilter).connect(highShelfFilter).connect(gainNode);
+          lastNode = gainNode;
+          console.log('Applying Gramophone Effect with enhanced settings:', {
               peakingFilter: {
                   frequency: peakingFilter.frequency.value,
                   Q: peakingFilter.Q.value,
@@ -198,6 +218,13 @@ export class SoundEffects {
               lowShelfFilter: {
                   frequency: lowShelfFilter.frequency.value,
                   gain: lowShelfFilter.gain.value,
+              },
+              highShelfFilter: {
+                  frequency: highShelfFilter.frequency.value,
+                  gain: highShelfFilter.gain.value,
+              },
+              gainNode: {
+                  gain: gainNode.gain.value,
               },
           });
       }
@@ -214,7 +241,7 @@ export class SoundEffects {
           });
       }
 
-      lastNode.connect(this.audioContext.destination);
+      lastNode.connect(this.masterGain);
 
       if (this.effectsEnabled.echo) this.startEcho();
       else this.stopEcho();
@@ -240,23 +267,41 @@ export class SoundEffects {
               this.effectsEnabled.crackle ? this.startCrackle() : this.stopCrackle();
               break;
           case 'gramophone':
-              console.log(this.effectsEnabled.gramophone ? 'Gramophone effect enabled.' : 'Gramophone effect disabled.');
+              if (this.effectsEnabled.gramophone) {
+                  console.log('Gramophone effect enabled.');
+              } else {
+                  console.log('Gramophone effect disabled.');
+              }
               break;
           case 'echo':
               this.effectsEnabled.echo ? this.startEcho() : this.stopEcho();
               break;
       }
 
+      // Re-apply effects to all active sources
+      this.reapplyEffects();
       console.log(`Effect "${effectName}" has been toggled.`);
+  }
+
+  /**
+   * Re-applies effects to all active sources.
+   */
+  reapplyEffects() {
+      console.log('Reapplying effects to all active sources.');
+      this.activeSources.forEach((source) => {
+          this.applyEffects(source);
+      });
   }
 
   /**
    * Disconnects all effect nodes from the audio chain.
    */
   disconnectEffects() {
-      const { peakingFilter, lowShelfFilter } = this.effectStates.gramophone;
+      const { peakingFilter, lowShelfFilter, highShelfFilter, gainNode } = this.effectStates.gramophone;
       peakingFilter?.disconnect();
       lowShelfFilter?.disconnect();
+      highShelfFilter?.disconnect();
+      gainNode?.disconnect();
 
       const { wetGain } = this.effectStates.echo;
       wetGain?.disconnect();
@@ -265,5 +310,49 @@ export class SoundEffects {
       gain?.disconnect();
 
       console.log('All effects have been disconnected from the audio chain.');
+  }
+
+  /**
+   * Adds a source to the activeSources set.
+   * @param {AudioBufferSourceNode} source - The source node to add.
+   */
+  addActiveSource(source) {
+      this.activeSources.add(source);
+      source.onended = () => {
+          this.activeSources.delete(source);
+          source.disconnect();
+          console.log('Source ended and removed from active sources.');
+      };
+  }
+
+  /**
+   * Removes a source from the activeSources set.
+   * @param {AudioBufferSourceNode} source - The source node to remove.
+   */
+  removeActiveSource(source) {
+      if (this.activeSources.has(source)) {
+          this.activeSources.delete(source);
+          source.disconnect();
+          console.log('Source removed from active sources.');
+      }
+  }
+
+  /**
+   * Sets the master gain value.
+   * @param {number} value - The gain value.
+   */
+  setMasterGain(value) {
+      this.masterGain.gain.value = value;
+      console.log(`Master gain set to ${value}.`);
+  }
+
+  /**
+   * Closes the audio context and cleans up resources.
+   */
+  closeContext() {
+      this.disconnectEffects();
+      this.masterGain.disconnect();
+      this.audioContext.close();
+      console.log('Audio context closed and resources cleaned up.');
   }
 }
