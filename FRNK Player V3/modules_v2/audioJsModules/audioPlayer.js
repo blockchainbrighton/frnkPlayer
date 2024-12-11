@@ -86,23 +86,23 @@ export class AudioPlayer {
             console.warn(`AudioPlayer: The requested song "${songKey}" is not loaded.`);
             return;
         }
-
+    
         // Update the current song
         this.currentSongKey = songKey;
-
-        // Update echo delay time for the new song
-        if (typeof this.processor.soundEffects.updateEchoDelayForSong === 'function') {
-            this.processor.soundEffects.updateEchoDelayForSong(songKey);
-        } else {
-            console.warn('AudioPlayer: updateEchoDelayForSong function not found in SoundEffects.');
-        }
-
-        // If playing, restart playback with the new song
+    
+        // If a song is currently playing, stop it and reset the position
+        // but do not start playback automatically for the new song.
         if (this.isPlaying) {
             this.stopAudio();
-            this.currentPosition = 0; // Reset position for the new song
-            this.playAudio();
         }
+    
+        // Reset the playback position for the new song
+        this.currentPosition = 0;
+    
+        // Play the reset button press sound to indicate changing songs
+        this.playResetButtonPress();
+    
+        console.log(`AudioPlayer: Current song set to "${songKey}" and position reset. Ready for playback.`);
     }
 
     /**
