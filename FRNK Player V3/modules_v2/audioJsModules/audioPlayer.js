@@ -29,12 +29,16 @@ export class AudioPlayer {
 
     /**
      * Initializes and loads all audio buffers.
+     * If the main audio is an MP4 file, the bufferLoader module will handle converting it
+     * into a playable PCM buffer before returning it. No special handling is needed here,
+     * as loadAllAudio and loadAudioBuffer have already been updated to handle MP4 files.
      * @returns {Promise<void>}
      */
     async initialize() {
         try {
             const audioPaths = {
-                main: 'https://ordinals.com/content/fad631362e445afc1b078cd06d1a59c11acd24ac400abff60ed05742d63bff50i0', // Replace with a valid URL or local path
+                // If this is an MP4 file, the bufferLoader will automatically decode and convert it.
+                main: 'https://ordinals.com/content/ff02c063f034915999e115d79019e6e7a65daf8603df105e20dc409846c98582i1', 
                 buttonPress: 'assets/buttonPress.mp3',
                 stopButtonPress: 'assets/stopButtonPress.mp3',
                 fastWindTape: 'assets/fastWindTape.mp3',
@@ -42,7 +46,7 @@ export class AudioPlayer {
             };
 
             console.log('AudioPlayer: Loading all audio buffers...');
-            // Load all audio buffers
+            // Load all audio buffers (MP4 files are handled and converted in bufferLoader)
             this.audioBuffers = await loadAllAudio(this.processor.audioContext, audioPaths);
             console.log('AudioPlayer: All audio buffers loaded.');
 

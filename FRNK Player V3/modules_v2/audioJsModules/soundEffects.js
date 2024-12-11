@@ -169,7 +169,7 @@ export class SoundEffects {
      */
     initEcho() {
         const delay = this.audioContext.createDelay();
-        delay.delayTime.value = 0.3;
+        delay.delayTime.value =2.068;
 
         const feedback = this.createGainNode(0.4);
         const wet = this.createGainNode(0.5);
