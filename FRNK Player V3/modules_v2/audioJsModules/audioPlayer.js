@@ -6,8 +6,10 @@ export class AudioPlayer {
     constructor(audioProcessor) {
         this.processor = audioProcessor;
         this.audioBuffers = {
-            main: null,
-            reversed: null,
+            song_1: null,
+            song_1_reversed: null,
+            song_2: null,
+            song_2_reversed: null,
             buttonPress: null,
             stopButtonPress: null,
             fastWindTape: null,
@@ -21,6 +23,9 @@ export class AudioPlayer {
         this.currentPosition = 0; // in seconds
         this.startTime = 0;
 
+        // The currently selected song. Defaults to 'song_1'.
+        this.currentSongKey = 'song_1';
+
         console.log('Initializing AudioPlayer...');
 
         // Initialize and load all audio buffers
@@ -29,16 +34,15 @@ export class AudioPlayer {
 
     /**
      * Initializes and loads all audio buffers.
-     * If the main audio is an MP4 file, the bufferLoader module will handle converting it
-     * into a playable PCM buffer before returning it. No special handling is needed here,
-     * as loadAllAudio and loadAudioBuffer have already been updated to handle MP4 files.
+     * If any of the audio files are MP4, the bufferLoader will automatically
+     * decode and convert them into a playable PCM buffer.
      * @returns {Promise<void>}
      */
     async initialize() {
         try {
             const audioPaths = {
-                // If this is an MP4 file, the bufferLoader will automatically decode and convert it.
-                main: 'https://ordinals.com/content/ff02c063f034915999e115d79019e6e7a65daf8603df105e20dc409846c98582i1', 
+                song_1: 'https://ordinals.com/content/ff02c063f034915999e115d79019e6e7a65daf8603df105e20dc409846c98582i1', 
+                song_2: 'https://ordinals.com/content/ff02c063f034915999e115d79019e6e7a65daf8603df105e20dc409846c98582i0',
                 buttonPress: 'assets/buttonPress.mp3',
                 stopButtonPress: 'assets/stopButtonPress.mp3',
                 fastWindTape: 'assets/fastWindTape.mp3',
@@ -46,20 +50,58 @@ export class AudioPlayer {
             };
 
             console.log('AudioPlayer: Loading all audio buffers...');
-            // Load all audio buffers (MP4 files are handled and converted in bufferLoader)
             this.audioBuffers = await loadAllAudio(this.processor.audioContext, audioPaths);
             console.log('AudioPlayer: All audio buffers loaded.');
 
-            // Create reversed buffer if main audio is loaded
-            if (this.audioBuffers.main) {
-                this.audioBuffers.reversed = createReversedBuffer(this.processor.audioContext, this.audioBuffers.main);
-                console.log('AudioPlayer: Reversed buffer created for main audio.');
+            // Create reversed buffers for each loaded song
+            if (this.audioBuffers.song_1) {
+                this.audioBuffers.song_1_reversed = createReversedBuffer(this.processor.audioContext, this.audioBuffers.song_1);
+                console.log('AudioPlayer: Reversed buffer created for song_1.');
             } else {
-                console.warn('AudioPlayer: Main audio buffer is not loaded. Reversed buffer not created.');
+                console.warn('AudioPlayer: song_1 audio buffer is not loaded. Reversed buffer not created.');
             }
+
+            if (this.audioBuffers.song_2) {
+                this.audioBuffers.song_2_reversed = createReversedBuffer(this.processor.audioContext, this.audioBuffers.song_2);
+                console.log('AudioPlayer: Reversed buffer created for song_2.');
+            } else {
+                console.warn('AudioPlayer: song_2 audio buffer is not loaded. Reversed buffer not created.');
+            }
+
         } catch (error) {
             console.error('AudioPlayer: Error loading audio:', error);
             throw error;
+        }
+    }
+
+
+
+    /**
+     * Sets the currently active song to the given song key.
+     * If the song is currently playing, it will stop and restart the chosen song.
+     * @param {string} songKey - The key of the song (e.g., 'song_1', 'song_2').
+     */
+    setCurrentSong(songKey) {
+        if (!this.audioBuffers[songKey]) {
+            console.warn(`AudioPlayer: The requested song "${songKey}" is not loaded.`);
+            return;
+        }
+
+        // Update the current song
+        this.currentSongKey = songKey;
+
+        // Update echo delay time for the new song
+        if (typeof this.processor.soundEffects.updateEchoDelayForSong === 'function') {
+            this.processor.soundEffects.updateEchoDelayForSong(songKey);
+        } else {
+            console.warn('AudioPlayer: updateEchoDelayForSong function not found in SoundEffects.');
+        }
+
+        // If playing, restart playback with the new song
+        if (this.isPlaying) {
+            this.stopAudio();
+            this.currentPosition = 0; // Reset position for the new song
+            this.playAudio();
         }
     }
 
@@ -139,7 +181,7 @@ export class AudioPlayer {
     playButtonPress() {
         this.playSound(this.audioBuffers.buttonPress, { 
             gainNode: this.processor.buttonPressGain,
-            useEffects: false // Button presses should not be affected by SoundEffects
+            useEffects: false
         });
         console.log('AudioPlayer: Button press sound played.');
     }
@@ -167,11 +209,12 @@ export class AudioPlayer {
     }
 
     /**
-     * Starts playing the main audio based on the current direction and playback rate.
+     * Starts playing the currently selected song based on the current direction and playback rate.
      */
     playAudio() {
-        if (this.isPlaying || !this.audioBuffers.main) {
-            console.warn('AudioPlayer: Cannot play audio. Either already playing or main audio buffer is missing.');
+        const mainBuffer = this.audioBuffers[this.currentSongKey];
+        if (this.isPlaying || !mainBuffer) {
+            console.warn(`AudioPlayer: Cannot play audio. Either already playing or ${this.currentSongKey} audio buffer is missing.`);
             return;
         }
 
@@ -197,7 +240,10 @@ export class AudioPlayer {
      * @private
      */
     _startMainAudio() {
-        const buffer = this.direction === 1 ? this.audioBuffers.main : this.audioBuffers.reversed;
+        const mainBuffer = this.audioBuffers[this.currentSongKey];
+        const reversedBuffer = this.audioBuffers[`${this.currentSongKey}_reversed`];
+        const buffer = this.direction === 1 ? mainBuffer : reversedBuffer;
+
         this.sourceNode = this.processor.audioContext.createBufferSource();
         this.sourceNode.buffer = buffer;
         this.sourceNode.playbackRate.value = this.playbackRate;
@@ -208,14 +254,14 @@ export class AudioPlayer {
 
         const offset = this.direction === 1
             ? this.currentPosition
-            : this.audioBuffers.main.duration - this.currentPosition;
+            : mainBuffer.duration - this.currentPosition;
         this.sourceNode.start(0, offset);
         this.startTime = this.processor.audioContext.currentTime;
         this.isPlaying = true;
 
-        console.log(`AudioPlayer: Main audio playback started. Direction: ${this.direction === 1 ? 'Forward' : 'Reverse'}, Playback Rate: ${this.playbackRate}, Offset: ${offset}s`);
+        console.log(`AudioPlayer: Main audio playback started for ${this.currentSongKey}. Direction: ${this.direction === 1 ? 'Forward' : 'Reverse'}, Playback Rate: ${this.playbackRate}, Offset: ${offset}s`);
 
-        // Register the source with SoundEffects for management
+        // Register the source with SoundEffects
         this.processor.soundEffects.addActiveSource(this.sourceNode);
         console.log('AudioPlayer: Main audio source registered with SoundEffects.');
 
@@ -229,7 +275,7 @@ export class AudioPlayer {
     }
 
     /**
-     * Stops the main audio playback and disconnects effects.
+     * Stops the current audio playback and disconnects effects.
      */
     stopAudio() {
         if (!this.isPlaying) {
@@ -260,10 +306,11 @@ export class AudioPlayer {
         console.log('AudioPlayer: Effects disconnected.');
 
         // Update currentPosition
+        const mainBuffer = this.audioBuffers[this.currentSongKey];
         const elapsed = this.processor.audioContext.currentTime - this.startTime;
         const deltaPosition = elapsed * this.playbackRate * this.direction;
         this.currentPosition += deltaPosition;
-        this.currentPosition = Math.max(0, Math.min(this.currentPosition, this.audioBuffers.main.duration));
+        this.currentPosition = Math.max(0, Math.min(this.currentPosition, mainBuffer.duration));
         console.log(`AudioPlayer: Current playback position updated to ${this.currentPosition.toFixed(2)}s`);
 
         this.isPlaying = false;
@@ -274,7 +321,7 @@ export class AudioPlayer {
     }
 
     /**
-     * Resets the playback position to the beginning.
+     * Resets the playback position to the beginning of the current song.
      */
     resetAudio() {
         this.stopAudio(); // Stop if playing
@@ -307,7 +354,7 @@ export class AudioPlayer {
         this.playbackRate = newRate;
         console.log(`AudioPlayer: Playback direction set to ${this.direction === 1 ? 'Forward' : 'Reverse'}, Playback rate set to ${this.playbackRate}`);
 
-        // Play main audio with new settings
+        // Play current song audio with new settings
         this.playAudio();
 
         // Handle FastWindTape Sound Effects
@@ -363,6 +410,7 @@ export class AudioPlayer {
      * @returns {number} - The current playback position.
      */
     getCurrentPosition() {
+        const mainBuffer = this.audioBuffers[this.currentSongKey];
         if (!this.isPlaying) {
             return this.currentPosition;
         }
@@ -370,7 +418,7 @@ export class AudioPlayer {
         const elapsed = this.processor.audioContext.currentTime - this.startTime;
         const deltaPosition = elapsed * this.playbackRate * this.direction;
         let pos = this.currentPosition + deltaPosition;
-        pos = Math.max(0, Math.min(pos, this.audioBuffers.main.duration));
+        pos = Math.max(0, Math.min(pos, mainBuffer.duration));
         return pos;
     }
 

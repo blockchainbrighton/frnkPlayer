@@ -44,14 +44,14 @@ class UIManager {
         // Assign TimerDisplay to TransportControls
         this.transportControls.timerDisplay = this.timerDisplay;
 
-        // Bind event handlers
+        // Bind event handlers for custom events
         this.handlePlaybackEnded = this.handlePlaybackEnded.bind(this);
         this.handlePlaybackStopped = this.handlePlaybackStopped.bind(this);
     }
 
     /**
      * Get transport control elements from the DOM.
-     * @returns {Object} Object containing transport control elements.
+     * @returns {Object}
      */
     getTransportElements() {
         return {
@@ -65,7 +65,7 @@ class UIManager {
 
     /**
      * Get effect control elements from the DOM.
-     * @returns {Object} Object containing effect control elements.
+     * @returns {Object}
      */
     getEffectElements() {
         return {
@@ -77,18 +77,18 @@ class UIManager {
 
     /**
      * Get volume control elements from the DOM.
-     * @returns {Object} Object containing volume control elements.
+     * @returns {Object}
      */
     getVolumeElements() {
         return {
             masterVolumeSlider: document.getElementById('masterVolumeSlider'),
-            // Removed buttonPressVolumeSlider and tapeNoiseVolumeSlider
+            // Additional volume controls can be added here
         };
     }
 
     /**
      * Get the timer display element from the DOM.
-     * @returns {HTMLElement} Timer display element.
+     * @returns {HTMLElement}
      */
     getTimerElement() {
         return document.getElementById('timerDisplay');
@@ -132,10 +132,22 @@ class UIManager {
             window.addEventListener('playbackEnded', this.handlePlaybackEnded);
             window.addEventListener('playbackStopped', this.handlePlaybackStopped);
             console.log('Custom event listeners attached.');
+
+            // Set up song selector event listener
+            const songSelector = document.getElementById('songSelector');
+            const currentSongDisplay = document.getElementById('currentSongDisplay');
+
+            if (songSelector && currentSongDisplay) {
+                songSelector.addEventListener('change', () => {
+                    const selectedValue = songSelector.value;
+                    this.audioPlayer.setCurrentSong(selectedValue);
+                    currentSongDisplay.textContent = `Current Song: ${selectedValue === 'song_1' ? 'Song 1' : 'Song 2'}`;
+                });
+            }
+            console.log('Song selector event listener set up.');
         } catch (error) {
             console.error('Initialization failed:', error);
             this.loadingScreen.updateMessage('Failed to load audio.');
-            // Optionally, display an error message to the user
         }
     }
 
