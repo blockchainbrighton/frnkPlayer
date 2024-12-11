@@ -15,7 +15,7 @@
       background-color: #000000;
       overflow: hidden;
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
+      grid-template-columns: 1fr 2fr 1fr; /* Three columns: Left (controls), Center (player), Right (empty/placeholder) */
       gap: 10px;
     }
 
@@ -27,11 +27,11 @@
       justify-content: flex-start;
       padding: 20px;
       background: linear-gradient(135deg, #1a1a1a, #333333);
-      border: 2px solid #00ffcc;
+      border: 2px solid #00ffcc; /* Tech neon color border */
       border-radius: 10px;
-      overflow-y: auto; /* Allow scrolling if many sliders are added */
     }
 
+    /* Playback controls container */
     .playback-controls-container {
       width: 100%;
       margin-bottom: 20px;
@@ -41,7 +41,7 @@
       border: 2px solid #00ffcc;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 10px;
     }
 
     .playback-controls-container h2 {
@@ -51,7 +51,7 @@
       text-align: center;
     }
 
-    .playback-timer-container,
+    .playback-timer-container, 
     .volume-controls-container {
       display: flex;
       align-items: center;
@@ -63,6 +63,7 @@
       background: rgba(0, 0, 0, 0.5);
       padding: 0.5em 1em;
       border-radius: 5px;
+      gap: 20px;
     }
 
     #timerDisplay {
@@ -84,34 +85,11 @@
     .volume-controls-container label {
       color: #00ffcc;
       font-size: 1rem;
-      white-space: nowrap;
     }
 
-    .volume-controls-container input[type="range"] {
+    #masterVolumeSlider {
       width: 100%;
       cursor: pointer;
-    }
-
-    .individual-volume-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .individual-volume-group h3 {
-      color: #00ffcc;
-      font-size: 1.2rem;
-      margin-bottom: 5px;
-      text-align: center;
-    }
-
-    .individual-volume-group .volume-controls-container {
-      justify-content: flex-start;
-    }
-
-    .individual-volume-group .volume-controls-container label {
-      min-width: 120px;
     }
 
     /* Center Column (Player) */
@@ -129,7 +107,7 @@
     #container {
       position: relative;
       width: 100%;
-      height: 70%;
+      height: 80%;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -138,7 +116,8 @@
     #tapeDeckContainer {
       position: relative;
       width: 100%;
-      height: 100%;
+      max-width: 500px; /* Added to restrict the maximum width */
+      height: auto;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -206,6 +185,7 @@
       cursor: not-allowed;
     }
 
+    /* Effect Button Container */
     .effect-button-container {
       display: flex;
       position: absolute;
@@ -268,14 +248,14 @@
       transform: scale(0.95);
     }
 
-    /* Right Column (Empty) */
+    /* Right Column (Empty or Future Controls) */
     .right-column {
       background: linear-gradient(135deg, #1a1a1a, #333333);
       border: 2px solid #00ffcc;
       border-radius: 10px;
     }
 
-    /* Responsive adjustments */
+    /* Responsive Design Adjustments */
     @media (max-width: 768px) {
       .button {
         font-size: 2vw;
@@ -347,67 +327,6 @@
         />
       </div>
     </div>
-
-    <!-- Individual Effect Volume Controls -->
-    <div class="individual-volume-group">
-      <h3>Individual Volumes</h3>
-
-      <div class="volume-controls-container">
-        <label for="buttonPressVolumeSlider">Button Press Vol</label>
-        <input
-          type="range"
-          id="buttonPressVolumeSlider"
-          min="0"
-          max="1"
-          step="0.01"
-          value="1"
-        />
-      </div>
-      <div class="volume-controls-container">
-        <label for="tapeNoiseVolumeSlider">Tape Noise Vol</label>
-        <input
-          type="range"
-          id="tapeNoiseVolumeSlider"
-          min="0"
-          max="1"
-          step="0.01"
-          value="1"
-        />
-      </div>
-      <div class="volume-controls-container">
-        <label for="crackleVolumeSlider">Crackle Vol</label>
-        <input
-          type="range"
-          id="crackleVolumeSlider"
-          min="0"
-          max="1"
-          step="0.01"
-          value="1"
-        />
-      </div>
-      <div class="volume-controls-container">
-        <label for="gramophoneVolumeSlider">Gramophone Vol</label>
-        <input
-          type="range"
-          id="gramophoneVolumeSlider"
-          min="0"
-          max="1"
-          step="0.01"
-          value="1"
-        />
-      </div>
-      <div class="volume-controls-container">
-        <label for="echoVolumeSlider">Echo Vol</label>
-        <input
-          type="range"
-          id="echoVolumeSlider"
-          min="0"
-          max="1"
-          step="0.01"
-          value="1"
-        />
-      </div>
-    </div>
   </div>
 
   <!-- Center Column (Tape Deck Player) -->
@@ -434,7 +353,7 @@
     </div>
   </div>
 
-  <!-- Right Column (Empty) -->
+  <!-- Right Column (Currently Empty) -->
   <div class="right-column"></div>
 
   <script type="module" src="modules_v2/uiModules/UIManager.js"></script>
